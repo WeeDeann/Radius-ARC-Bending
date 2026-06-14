@@ -182,10 +182,6 @@ nav button:hover{color:var(--text)}
         <input type="number" id="c-r" placeholder="e.g. 300" oninput="circInput('c-r')">
       </div>
       <div class="field">
-        <label>Diameter (mm)</label>
-        <input type="number" id="c-d" placeholder="e.g. 600" oninput="circInput('c-d')">
-      </div>
-      <div class="field">
         <label>Circumference (mm)</label>
         <input type="number" id="c-c" placeholder="e.g. 1885" oninput="circInput('c-c')">
       </div>
@@ -306,6 +302,7 @@ nav button:hover{color:var(--text)}
       <div class="lg"><span class="sw" style="background:#e94560;height:12px;width:12px;border-radius:50%"></span><span class="nm">Bending roller (adjust)</span></div>
       <div class="lg"><span class="sw" style="background:#4caf50;height:12px;width:12px;border-radius:50%"></span><span class="nm">Leading tip · feeds in from left</span></div>
     </div>
+    <p class="hint" style="margin-top:.75rem">The <strong style="color:#fff">correction roller</strong> (not shown) is used to fine-tune the bend — apply minimal pressure only. Adjustment varies per bend.</p>
   </div>
 </div>
 
@@ -366,10 +363,9 @@ nav button:hover{color:var(--text)}
 // ═══════════════════════════════════════
 const π = Math.PI;
 
-function f(n, dp=2) {
+function f(n) {
   if (n==null||isNaN(n)) return '';
-  const s = parseFloat(n.toFixed(dp)).toString();
-  return s;
+  return Math.round(n).toString();
 }
 
 function el(tag, attrs={}) {
@@ -407,7 +403,7 @@ function showTab(id, btn) {
 // ═══════════════════════════════════════
 //  CIRCLE / RING  (solver, like Arc)
 // ═══════════════════════════════════════
-const CIRC_IDS = ['c-r','c-d','c-c','c-raw','c-sp'];
+const CIRC_IDS = ['c-r','c-c','c-raw','c-sp'];
 let circUserSet = new Set();
 
 function circInput(id) {
@@ -427,26 +423,23 @@ function solveCircle() {
     if(!allowZeroNeg && v<=0) return null;
     return v;
   };
-  let r=get('c-r'), d=get('c-d'), c=get('c-c'), raw=get('c-raw'), sp=get('c-sp',true);
+  let r=get('c-r'), c=get('c-c'), raw=get('c-raw'), sp=get('c-sp',true);
 
   // 1) Establish circumference c
   if(c==null){
     if(r!=null) c=2*π*r;
-    else if(d!=null) c=π*d;
     else if(raw!=null && sp!=null) c=raw-sp;
   }
 
   if(c==null || c<=0){ drawCircleSVG(null); return; }
 
   // 2) Geometry from c
-  r=c/(2*π); d=c/π;
+  r=c/(2*π);
   // 3) Raw / splice relationship
   if(raw==null && sp!=null) raw=c+sp;
   else if(raw!=null && sp==null) sp=raw-c;
-  else if(raw!=null && sp!=null) c=c; // both given & consistent enough; keep c from above
 
   setCircField('c-r', r);
-  setCircField('c-d', d);
   setCircField('c-c', c);
   if(raw!=null) setCircField('c-raw', raw);
   if(sp!=null)  setCircField('c-sp', sp);
@@ -463,7 +456,7 @@ function setCircField(id, val) {
 
 function clearCircle() {
   circUserSet.clear();
-  ['c-r','c-d','c-c','c-raw','c-sp','c-bd'].forEach(id=>{
+  ['c-r','c-c','c-raw','c-sp','c-bd'].forEach(id=>{
     const e=document.getElementById(id);
     e.value=''; e.classList.remove('solved');
   });
@@ -673,6 +666,7 @@ function drawArcDiagram(r, angleDeg, arcLen, chord, rise) {
 //  SIMULATOR
 // ═══════════════════════════════════════
 let simAnim=null;
+function renderSim() { calcSimInputs(); }
 
 function simParams() {
   const BL=parseFloat(document.getElementById('sim-bl').value)||0;
@@ -749,14 +743,14 @@ function drawSim(progress, p) {
   pts.push([-(RZONE + tailMax), 0]);
   pts.push([-RZONE,0]); pts.push([RZONE,0]);
   pts.push([RZONE + lead, 0]);                          // leading leg pointing right at 0%
-  for(let i=0;i<=48;i++){                               // exit arc curves UPWARD (negative y)
+  for(let i=0;i<=48;i++){                               // exit arc curves DOWNWARD (positive y)
     const a=(i/48)*Math.min(targetRad,2*π);
-    pts.push([RZONE + R*Math.sin(a), -(R*(1-Math.cos(a)))]);
+    pts.push([RZONE + R*Math.sin(a), +(R*(1-Math.cos(a)))]);
   }
   const tipx=RZONE + R*Math.sin(targetRad) + lead*Math.cos(targetRad);
-  const tipy=-(R*(1-Math.cos(targetRad))) - lead*Math.sin(targetRad);
+  const tipy=+(R*(1-Math.cos(targetRad))) + lead*Math.sin(targetRad);
   pts.push([tipx, tipy]);
-  pts.push([0, RZONE*0.6]);                             // headroom below bar for bending roller
+  pts.push([0, -RZONE*0.6]);                            // headroom above bar for feed rollers
 
   const xs=pts.map(q=>q[0]), ys=pts.map(q=>q[1]);
   const minX=Math.min(...xs), maxX=Math.max(...xs);
@@ -777,8 +771,8 @@ function drawSim(progress, p) {
   svg.appendChild(g);
 
   // ── Rollers ──
-  const backY=-(sRR+sBD/2+1);   // feed rollers (top)
-  const bendY=sRR+sBD/2+1;      // bending roller (bottom centre)
+  const backY=-(sRR+sBD/2+1);   // feed rollers (above bar = negative y)
+  const bendY=+(sRR+sBD/2+1);   // bending roller (below bar, pushes down = positive y)
   function drawRoller(cx,cy,r,stroke){
     g.appendChild(el('circle',{cx,cy,r,fill:'#36384a',stroke,'stroke-width':1.5}));
     g.appendChild(el('circle',{cx,cy,r:r*0.38,fill:'#50526a',opacity:.6}));
@@ -789,13 +783,13 @@ function drawSim(progress, p) {
   drawRoller(0, bendY, sRR, '#e94560');
 
   // ── Bar path ──
-  // Exit arc curves UPWARD: centre at (sZone, -sR); sweep=1 (CW in SVG = upward)
+  // Exit arc curves DOWNWARD: centre at (sZone, +sR); sweep=0 (CCW in SVG = downward)
   const curAex=sZone + sR*Math.sin(curRadC);
-  const curAey=-(sR*(1-Math.cos(curRadC)));             // negative = upward on screen
+  const curAey=+(sR*(1-Math.cos(curRadC)));             // positive = downward on screen
   const la=curRadC>π?1:0;
-  // Tangent at arc end: (cos θ, -sin θ) — confirmed upward at 90°
+  // Tangent at arc end: (cos θ, +sin θ)
   const leadEx=curAex + sLead*Math.cos(curRadC);
-  const leadEy=curAey - sLead*Math.sin(curRadC);
+  const leadEy=curAey + sLead*Math.sin(curRadC);
 
   // Feed tail (left): remaining unbent arc + trailing leg, capped
   const tailMm=Math.min((1-progress)*p.arcLen + tail, R*2 + tail);
@@ -806,7 +800,7 @@ function drawSim(progress, p) {
   if(progress>0.005){
     exitSeg = curAngleDeg<0.3
       ? `M ${sZone} 0 L ${curAex} ${curAey}`
-      : `M ${sZone} 0 A ${sR} ${sR} 0 ${la} 1 ${curAex} ${curAey}`;
+      : `M ${sZone} 0 A ${sR} ${sR} 0 ${la} 0 ${curAex} ${curAey}`;
     if(sLead>0) exitSeg += ` L ${leadEx} ${leadEy}`;
   } else {
     exitSeg = `M ${sZone} 0 L ${sZone+sLead} 0`; // straight, ready to bend
@@ -829,8 +823,8 @@ function drawSim(progress, p) {
   if(curAngleDeg>2){
     const ma=curRadC/2;
     const lblR=sR + sBD + 14;
-    // label on the outer/convex face of the upward arc
-    txt(g, sZone + lblR*Math.sin(ma), -(sR - lblR*Math.cos(ma)), `${f(curAngleDeg)}°`, '#f5a623', 'middle', 10);
+    // label on the concave (inner/upper) face of the downward arc
+    txt(g, sZone + lblR*Math.sin(ma), +(sR - lblR*Math.cos(ma)), `${f(curAngleDeg)}°`, '#f5a623', 'middle', 10);
   }
 
   // End markers
