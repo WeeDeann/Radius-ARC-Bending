@@ -175,19 +175,31 @@ nav button:hover{color:var(--text)}
 <div id="circle" class="tab active">
   <div class="card">
     <div class="card-title">Circle / Ring Calculator</div>
-    <p class="hint">Enter <strong style="color:#fff">Diameter or Radius</strong>. Add bar diameter for an accurate raw cut length including splice allowance.</p>
+    <p class="hint">Like the Arc tab, but for full rings. Enter <strong style="color:#fff">Radius</strong> (#1 from your bar schedule) plus your <strong style="color:#fff">Raw Bar Length</strong> — it works out the splice / overlap. Enter any sufficient pair and the rest solve. Bar Diameter gives a recommended overlap.</p>
     <div class="grid">
       <div class="field">
-        <label>Diameter (mm)</label>
-        <input type="number" id="c-d" placeholder="e.g. 600" oninput="solveCircle('d')">
+        <label>Radius (mm)</label>
+        <input type="number" id="c-r" placeholder="e.g. 300" oninput="circInput('c-r')">
       </div>
       <div class="field">
-        <label>Radius (mm)</label>
-        <input type="number" id="c-r" placeholder="e.g. 300" oninput="solveCircle('r')">
+        <label>Diameter (mm)</label>
+        <input type="number" id="c-d" placeholder="e.g. 600" oninput="circInput('c-d')">
+      </div>
+      <div class="field">
+        <label>Circumference (mm)</label>
+        <input type="number" id="c-c" placeholder="e.g. 1885" oninput="circInput('c-c')">
+      </div>
+      <div class="field">
+        <label>Raw Bar Length (mm)</label>
+        <input type="number" id="c-raw" placeholder="e.g. 1920" oninput="circInput('c-raw')">
+      </div>
+      <div class="field">
+        <label>Splice / Overlap (mm)</label>
+        <input type="number" id="c-sp" placeholder="e.g. 35" oninput="circInput('c-sp')">
       </div>
       <div class="field">
         <label>Bar Diameter (mm)</label>
-        <input type="number" id="c-bd" placeholder="e.g. 16" oninput="solveCircle('bd')">
+        <input type="number" id="c-bd" placeholder="e.g. 16" oninput="circInput('c-bd')">
       </div>
     </div>
     <div style="margin-top:.75rem">
@@ -287,7 +299,7 @@ nav button:hover{color:var(--text)}
   <div class="card">
     <div class="card-title">Live View (top-down)</div>
     <div class="diagram" style="min-height:300px;background:#080a0f">
-      <svg id="sim-svg" viewBox="-260 -200 520 360" style="width:100%;max-height:360px"></svg>
+      <svg id="sim-svg" viewBox="-250 -175 500 350" style="width:100%;max-height:360px"></svg>
     </div>
     <div class="legend">
       <div class="lg"><span class="sw" style="background:#6a8caf;height:12px;width:12px;border-radius:50%"></span><span class="nm">Feed rollers (fixed)</span></div>
@@ -393,77 +405,123 @@ function showTab(id, btn) {
 }
 
 // ═══════════════════════════════════════
-//  CIRCLE
+//  CIRCLE / RING  (solver, like Arc)
 // ═══════════════════════════════════════
-function solveCircle(from) {
-  const dEl=document.getElementById('c-d');
-  const rEl=document.getElementById('c-r');
-  let r=null;
-  if(from==='d'&&dEl.value) r=parseFloat(dEl.value)/2;
-  else if(from==='r'&&rEl.value) r=parseFloat(rEl.value);
-  // bd change: just re-draw with current r
-  if(from==='bd') {
-    const cur=parseFloat(dEl.value)||parseFloat(rEl.value)*2||0;
-    r=cur/2||null;
+const CIRC_IDS = ['c-r','c-d','c-c','c-raw','c-sp'];
+let circUserSet = new Set();
+
+function circInput(id) {
+  if(id!=='c-bd') {                       // bar dia is guidance only, not a solver field
+    const v=parseFloat(document.getElementById(id).value);
+    if(!isNaN(v)) circUserSet.add(id); else circUserSet.delete(id);
   }
-  if(r===null||isNaN(r)||r<=0){drawCircleSVG(null);return}
-  if(from!=='d'){dEl.value=f(r*2); dEl.classList.add('solved')} else dEl.classList.remove('solved')
-  if(from!=='r'){rEl.value=f(r);   rEl.classList.add('solved')} else rEl.classList.remove('solved')
-  drawCircleSVG(r);
+  solveCircle();
+}
+
+function solveCircle() {
+  // Pull user-entered values (splice may legitimately be 0 or negative)
+  const get=(id,allowZeroNeg)=>{
+    if(!circUserSet.has(id)) return null;
+    const v=parseFloat(document.getElementById(id).value);
+    if(isNaN(v)) return null;
+    if(!allowZeroNeg && v<=0) return null;
+    return v;
+  };
+  let r=get('c-r'), d=get('c-d'), c=get('c-c'), raw=get('c-raw'), sp=get('c-sp',true);
+
+  // 1) Establish circumference c
+  if(c==null){
+    if(r!=null) c=2*π*r;
+    else if(d!=null) c=π*d;
+    else if(raw!=null && sp!=null) c=raw-sp;
+  }
+
+  if(c==null || c<=0){ drawCircleSVG(null); return; }
+
+  // 2) Geometry from c
+  r=c/(2*π); d=c/π;
+  // 3) Raw / splice relationship
+  if(raw==null && sp!=null) raw=c+sp;
+  else if(raw!=null && sp==null) sp=raw-c;
+  else if(raw!=null && sp!=null) c=c; // both given & consistent enough; keep c from above
+
+  setCircField('c-r', r);
+  setCircField('c-d', d);
+  setCircField('c-c', c);
+  if(raw!=null) setCircField('c-raw', raw);
+  if(sp!=null)  setCircField('c-sp', sp);
+
+  drawCircleSVG(r, {circ:c, raw, sp});
+}
+
+function setCircField(id, val) {
+  if(circUserSet.has(id)) return;        // don't overwrite what the user typed
+  const e=document.getElementById(id);
+  e.value=f(val);
+  e.classList.add('solved');
 }
 
 function clearCircle() {
-  ['c-d','c-r','c-bd'].forEach(id=>{
+  circUserSet.clear();
+  ['c-r','c-d','c-c','c-raw','c-sp','c-bd'].forEach(id=>{
     const e=document.getElementById(id);
     e.value=''; e.classList.remove('solved');
   });
   drawCircleSVG(null);
 }
 
-function drawCircleSVG(r) {
+function drawCircleSVG(r, info) {
   const svg=document.getElementById('circle-svg');
   svg.innerHTML='';
-  const W=280, H=220;
-  // Grid dots
-  for(let x=-130;x<=130;x+=30) for(let y=-100;y<=100;y+=30) {
+  for(let x=-130;x<=130;x+=30) for(let y=-100;y<=100;y+=30)
     svg.appendChild(el('circle',{cx:x,cy:y,r:0.8,fill:'#1a1d2e'}));
-  }
-  const dispR = r ? Math.min(95, Math.max(25, 95)) : 70;
-  // Circle
+
+  const dispR = r ? 92 : 70;
   svg.appendChild(el('circle',{cx:0,cy:0,r:dispR,fill:'none',stroke:'#2a2d3e','stroke-width':1}));
   svg.appendChild(el('circle',{cx:0,cy:0,r:dispR,fill:'none',stroke:'#f5a623','stroke-width':2.5,'stroke-dasharray': r ? 'none' : '4 3'}));
-  // Diameter line
   svg.appendChild(el('line',{x1:-dispR,y1:0,x2:dispR,y2:0,stroke:'#4fa3e0','stroke-width':1,'stroke-dasharray':'5 4'}));
-  // Radius line
   svg.appendChild(el('line',{x1:0,y1:0,x2:dispR,y2:0,stroke:'#e94560','stroke-width':2}));
-  // Centre dot
   svg.appendChild(el('circle',{cx:0,cy:0,r:3,fill:'#e94560'}));
-  // Endpoint dots
   svg.appendChild(el('circle',{cx:dispR,cy:0,r:3.5,fill:'#f5a623'}));
-  svg.appendChild(el('circle',{cx:-dispR,cy:0,r:3.5,fill:'#f5a623'}));
-  if(r) {
-    txt(svg,0,-dispR-8,'Ø','#4fa3e0','middle',11);
-    txt(svg,dispR/2,-6,'r','#e94560','middle',11);
-    const circ=2*π*r;
-    const bd=parseFloat(document.getElementById('c-bd').value)||0;
-    const splice=bd>0 ? bd*1.5 : null;
-    const rawLen=splice!==null ? circ+splice : null;
-    const items=[
-      {color:'#e94560', name:'Radius',         value:`${f(r)} mm`},
-      {color:'#4fa3e0', name:'Diameter',        value:`${f(r*2)} mm`},
-      {color:'#888',    name:'Circumference',   value:`${f(circ)} mm`},
-    ];
-    if(splice!==null) {
-      items.push({color:'#f5a623', name:'Splice allowance', value:`${f(splice)} mm`});
-      items.push({color:'#4caf50', name:'Raw cut length',   value:`${f(rawLen)} mm`});
-    } else {
-      items.push({color:'#555', name:'Raw cut length', value:'Enter bar Ø above'});
-    }
-    legend('circle-legend', items);
-  } else {
-    txt(svg,0,dispR+18,'Enter diameter or radius','#444','middle',10);
+
+  if(!r){
+    txt(svg,0,dispR+18,'Enter radius + raw bar length','#444','middle',10);
     legend('circle-legend',null);
+    return;
   }
+
+  txt(svg,0,-dispR-8,'Ø','#4fa3e0','middle',11);
+  txt(svg,dispR/2,-6,'r','#e94560','middle',11);
+
+  // Show the splice/overlap as a short doubled arc near the top of the ring
+  const circ=info.circ, raw=info.raw, sp=info.sp;
+  if(sp!=null && sp>0 && circ>0){
+    const sweep=Math.min(sp/circ*2*π, π*0.9);   // overlap arc (capped visually)
+    const a0=-π/2 - sweep/2, a1=-π/2 + sweep/2;  // centred at top
+    const x0=dispR*Math.cos(a0), y0=dispR*Math.sin(a0);
+    const x1=dispR*Math.cos(a1), y1=dispR*Math.sin(a1);
+    svg.appendChild(el('path',{d:`M ${x0} ${y0} A ${dispR} ${dispR} 0 0 1 ${x1} ${y1}`,
+      fill:'none',stroke:'#4caf50','stroke-width':5,'stroke-linecap':'round',opacity:.85}));
+  }
+
+  const bd=parseFloat(document.getElementById('c-bd').value)||0;
+  const recSplice = bd>0 ? bd*1.5 : null;
+
+  const items=[
+    {color:'#e94560', name:'Radius',        value:`${f(r)} mm`},
+    {color:'#4fa3e0', name:'Diameter',      value:`${f(r*2)} mm`},
+    {color:'#888',    name:'Circumference', value:`${f(circ)} mm`},
+  ];
+  if(raw!=null) items.push({color:'#aaa', name:'Raw bar length', value:`${f(raw)} mm`});
+  if(sp!=null){
+    if(sp>=0) items.push({color:'#4caf50', name:'Splice / overlap', value:`${f(sp)} mm`});
+    else      items.push({color:'#e94560', name:'Bar too short by', value:`${f(-sp)} mm`});
+  }
+  if(recSplice!=null){
+    items.push({color:'#f5a623', name:'Recommended overlap', value:`≈ ${f(recSplice)} mm (1.5× bar Ø)`});
+    if(raw==null) items.push({color:'#f5a623', name:'Suggested raw length', value:`${f(circ+recSplice)} mm`});
+  }
+  legend('circle-legend', items);
 }
 
 // ═══════════════════════════════════════
@@ -631,13 +689,23 @@ function calcSimInputs() {
   const p=simParams();
   const el2=document.getElementById('sim-calcs');
   if(p.BL>0&&p.R>0) {
-    const warn=p.BL<=p.lead+p.tail
-      ?'<div class="stat-box" style="border-color:#e94560"><div class="s-label" style="color:#e94560">Warning</div><div class="s-val" style="color:#e94560;font-size:.85rem">Legs exceed bar length</div></div>'
-      :(p.angleDeg>360?'<div class="stat-box" style="border-color:#f5a623"><div class="s-label" style="color:#f5a623">Note</div><div class="s-val" style="color:#f5a623;font-size:.85rem">Over full circle</div></div>':'');
+    let extra='';
+    if(p.BL<=p.lead+p.tail){
+      extra='<div class="stat-box" style="border-color:#e94560"><div class="s-label" style="color:#e94560">Warning</div><div class="s-val" style="color:#e94560;font-size:.85rem">Legs exceed bar length</div></div>';
+    } else if(p.lead===0 && p.tail===0){
+      // Ring mode: compare arc length to the full circumference for splice/overlap
+      const circ=2*π*p.R;
+      const diff=p.arcLen-circ;
+      if(diff>=0)
+        extra=`<div class="stat-box" style="border-color:#4caf50"><div class="s-label" style="color:#4caf50">Splice / overlap</div><div class="s-val" style="color:#4caf50">${f(diff)} mm</div></div>`;
+      else
+        extra=`<div class="stat-box"><div class="s-label">Short of full ring</div><div class="s-val">${f(-diff)} mm</div></div>`;
+      extra=`<div class="stat-box"><div class="s-label">Full ring length</div><div class="s-val">${f(circ)} mm</div></div>`+extra;
+    }
     el2.innerHTML=`
       <div class="stat-box"><div class="s-label">Arc Length</div><div class="s-val">${f(p.arcLen)} mm</div></div>
       <div class="stat-box"><div class="s-label">Bend Angle</div><div class="s-val">${f(p.angleDeg)}°</div></div>
-      ${warn}
+      ${extra}
     `;
   } else {
     el2.innerHTML='';
@@ -655,6 +723,7 @@ function onSimSlider() {
 function drawSim(progress, p) {
   const svg=document.getElementById('sim-svg');
   svg.innerHTML='';
+  svg.setAttribute('viewBox','-250 -175 500 350'); // FIXED — content is scaled & centred into it
 
   if(!p.BL||!p.R||p.arcLen<=0) {
     const t=el('text',{x:0,y:8,'text-anchor':'middle',fill:'#333','font-size':13});
@@ -694,22 +763,26 @@ function drawSim(progress, p) {
   const minY=Math.min(...ys), maxY=Math.max(...ys);
   const pad=Math.max(R*0.1, RZONE*0.6);
   const shapeW=maxX-minX+2*pad, shapeH=maxY-minY+2*pad;
-  const sc=Math.min(460/shapeW, 310/shapeH);
+  // Fit content into the fixed 500×350 viewBox (with margin) and centre it.
+  // Scaling is baked into coordinates; centring uses a translate group so that
+  // stroke widths and font sizes stay constant regardless of zoom.
+  const sc=Math.min(460/shapeW, 320/shapeH);
 
   const sR=R*sc, sLead=lead*sc, sZone=RZONE*sc;
   const sBD=Math.max(3,Math.min(15,BD*sc*0.6));
   const sRR=Math.max(9,Math.min(22,sZone*0.42));
 
-  const vx=(minX-pad)*sc, vy=(minY-pad)*sc;
-  svg.setAttribute('viewBox',`${vx} ${vy} ${shapeW*sc} ${shapeH*sc}`);
+  const cxMid=((minX+maxX)/2)*sc, cyMid=((minY+maxY)/2)*sc;
+  const g=el('g',{transform:`translate(${-cxMid} ${-cyMid})`});
+  svg.appendChild(g);
 
   // ── Rollers ──
   const backY=-(sRR+sBD/2+1);   // feed rollers (top)
   const bendY=sRR+sBD/2+1;      // bending roller (bottom centre)
   function drawRoller(cx,cy,r,stroke){
-    svg.appendChild(el('circle',{cx,cy,r,fill:'#36384a',stroke,'stroke-width':1.5}));
-    svg.appendChild(el('circle',{cx,cy,r:r*0.38,fill:'#50526a',opacity:.6}));
-    svg.appendChild(el('circle',{cx,cy,r:1.5,fill:'#888'}));
+    g.appendChild(el('circle',{cx,cy,r,fill:'#36384a',stroke,'stroke-width':1.5}));
+    g.appendChild(el('circle',{cx,cy,r:r*0.38,fill:'#50526a',opacity:.6}));
+    g.appendChild(el('circle',{cx,cy,r:1.5,fill:'#888'}));
   }
   drawRoller(-sZone*0.42, backY, sRR, '#6a8caf');
   drawRoller(+sZone*0.42, backY, sRR, '#6a8caf');
@@ -743,29 +816,29 @@ function drawSim(progress, p) {
   const allPath=[tailSeg,throughSeg,exitSeg].join(' ');
 
   // Draw: glow → body → highlight
-  svg.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a903322','stroke-width':sBD+10,'stroke-linecap':'round','stroke-linejoin':'round'}));
-  svg.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a9098','stroke-width':sBD,'stroke-linecap':'round','stroke-linejoin':'round'}));
-  svg.appendChild(el('path',{d:allPath,fill:'none',stroke:'#c8d2e0','stroke-width':sBD*0.2,'stroke-linecap':'round','stroke-linejoin':'round',opacity:.6}));
+  g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a903322','stroke-width':sBD+10,'stroke-linecap':'round','stroke-linejoin':'round'}));
+  g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a9098','stroke-width':sBD,'stroke-linecap':'round','stroke-linejoin':'round'}));
+  g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#c8d2e0','stroke-width':sBD*0.2,'stroke-linecap':'round','stroke-linejoin':'round',opacity:.6}));
 
   // Feed direction arrow on the tail (points right, into the rollers)
   const arrX=-sZone - Math.min(tailMm*sc*0.5, 44);
-  txt(svg, arrX, -sBD-5, 'feed →', '#56586a', 'middle', 8);
-  svg.appendChild(el('path',{d:`M ${-sZone-9} -3 L ${-sZone} 0 L ${-sZone-9} 3`,fill:'none',stroke:'#56586a','stroke-width':1}));
+  txt(g, arrX, -sBD-5, 'feed →', '#56586a', 'middle', 8);
+  g.appendChild(el('path',{d:`M ${-sZone-9} -3 L ${-sZone} 0 L ${-sZone-9} 3`,fill:'none',stroke:'#56586a','stroke-width':1}));
 
   // Current angle label on the convex side of the arc
   if(curAngleDeg>2){
     const ma=curRadC/2;
     const lblR=sR + sBD + 14;
     // label on the outer/convex face of the upward arc
-    txt(svg, sZone + lblR*Math.sin(ma), -(sR - lblR*Math.cos(ma)), `${f(curAngleDeg)}°`, '#f5a623', 'middle', 10);
+    txt(g, sZone + lblR*Math.sin(ma), -(sR - lblR*Math.cos(ma)), `${f(curAngleDeg)}°`, '#f5a623', 'middle', 10);
   }
 
   // End markers
   const dotR=Math.max(3,sBD*0.5);
   const tipX=(progress>0.005) ? (sLead>0?leadEx:curAex) : (sZone+sLead);
   const tipY=(progress>0.005) ? (sLead>0?leadEy:curAey) : 0;
-  svg.appendChild(el('circle',{cx:tipX,cy:tipY,r:dotR,fill:'#4caf50',opacity:.9}));   // leading tip (out first)
-  svg.appendChild(el('circle',{cx:tailEndX,cy:0,r:dotR,fill:'#e94560',opacity:.9})); // trailing tail (feeding)
+  g.appendChild(el('circle',{cx:tipX,cy:tipY,r:dotR,fill:'#4caf50',opacity:.9}));   // leading tip (out first)
+  g.appendChild(el('circle',{cx:tailEndX,cy:0,r:dotR,fill:'#e94560',opacity:.9})); // trailing tail (feeding)
 }
 
 function animateSim() {
