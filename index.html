@@ -81,6 +81,17 @@ nav button:hover{color:var(--text)}
 }
 .diagram svg{max-width:100%;height:auto}
 
+/* LEGEND (value chips below diagrams — avoids label overlap) */
+.legend{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.9rem}
+.legend .lg{
+  display:flex;align-items:center;gap:.5rem;
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:7px;padding:.45rem .7rem;font-size:.82rem;flex:1;min-width:120px
+}
+.legend .lg .sw{width:16px;height:4px;border-radius:2px;flex-shrink:0}
+.legend .lg .nm{color:var(--muted);white-space:nowrap}
+.legend .lg .vl{color:#fff;font-weight:600;margin-left:auto;white-space:nowrap}
+
 /* SEGMENTS */
 .seg-item{
   display:flex;align-items:center;gap:.5rem;
@@ -189,6 +200,7 @@ nav button:hover{color:var(--text)}
     <div class="diagram">
       <svg id="circle-svg" width="280" height="220" viewBox="-140 -110 280 220"></svg>
     </div>
+    <div class="legend" id="circle-legend"></div>
   </div>
 </div>
 
@@ -229,6 +241,7 @@ nav button:hover{color:var(--text)}
     <div class="diagram" style="min-height:260px">
       <svg id="arc-svg" width="360" height="260"></svg>
     </div>
+    <div class="legend" id="arc-legend"></div>
   </div>
 </div>
 
@@ -321,9 +334,14 @@ nav button:hover{color:var(--text)}
     </div>
   </div>
   <div class="card">
-    <div class="card-title">Live View</div>
+    <div class="card-title">Live View (top-down)</div>
     <div class="diagram" style="min-height:300px;background:#080a0f">
       <svg id="sim-svg" viewBox="-260 -200 520 360" style="width:100%;max-height:360px"></svg>
+    </div>
+    <div class="legend">
+      <div class="lg"><span class="sw" style="background:#6a8caf;height:12px;width:12px;border-radius:50%"></span><span class="nm">Feed rollers (fixed)</span></div>
+      <div class="lg"><span class="sw" style="background:#e94560;height:12px;width:12px;border-radius:50%"></span><span class="nm">Bending roller (adjust)</span></div>
+      <div class="lg"><span class="sw" style="background:#f5a623;height:12px;width:12px;border-radius:50%"></span><span class="nm">Correction roller</span></div>
     </div>
   </div>
 </div>
@@ -403,6 +421,17 @@ function txt(svg, x, y, text, fill='#f5a623', anchor='middle', size=10) {
   svg.appendChild(t);
 }
 
+// Render a colour-coded value legend below a diagram (HTML, reflows on mobile)
+function legend(id, items) {
+  const box = document.getElementById(id);
+  if (!box) return;
+  if (!items || !items.length) { box.innerHTML=''; return; }
+  box.innerHTML = items.map(it =>
+    `<div class="lg"><span class="sw" style="background:${it.color}"></span>`+
+    `<span class="nm">${it.name}</span><span class="vl">${it.value}</span></div>`
+  ).join('');
+}
+
 function showTab(id, btn) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
@@ -460,12 +489,17 @@ function drawCircleSVG(r) {
   svg.appendChild(el('circle',{cx:dispR,cy:0,r:3.5,fill:'#f5a623'}));
   svg.appendChild(el('circle',{cx:-dispR,cy:0,r:3.5,fill:'#f5a623'}));
   if(r) {
-    const d=f(r*2); const rv=f(r); const c=f(2*π*r);
-    txt(svg,0,-dispR-12,`Ø ${d} mm`,'#4fa3e0','middle',10);
-    txt(svg,dispR/2,'-12',`r = ${rv} mm`,'#e94560','middle',9);
-    txt(svg,0,dispR+18,`Circumference: ${c} mm`,'#888','middle',9);
+    // Minimal in-diagram markers only — values go in the legend below
+    txt(svg,0,-dispR-8,'Ø','#4fa3e0','middle',11);
+    txt(svg,dispR/2,-6,'r','#e94560','middle',11);
+    legend('circle-legend',[
+      {color:'#e94560', name:'Radius',        value:`${f(r)} mm`},
+      {color:'#4fa3e0', name:'Diameter',      value:`${f(r*2)} mm`},
+      {color:'#f5a623', name:'Circumference', value:`${f(2*π*r)} mm`}
+    ]);
   } else {
     txt(svg,0,dispR+18,'Enter a value above','#444','middle',10);
+    legend('circle-legend',null);
   }
 }
 
@@ -543,6 +577,7 @@ function drawArcDiagram(r, angleDeg, arcLen, chord, rise) {
 
   if(!r||!angleDeg) {
     txt(svg,W/2,H/2,'Enter any two values above','#333','middle',13);
+    legend('arc-legend',null);
     return;
   }
 
@@ -599,20 +634,17 @@ function drawArcDiagram(r, angleDeg, arcLen, chord, rise) {
     fill:'none',stroke:'#555','stroke-width':1
   }));
 
-  // Labels
-  const pad=8;
-  // Arc length label
-  const alx=px + (px < cx ? -20 : 20);
-  txt(svg,cx,py-16,`Arc: ${f(arcLen)} mm`,'#f5a623','middle',9.5);
-  // Chord label
-  txt(svg,(x1+x2)/2,(y1+y2)/2+16,`Chord: ${f(chord)} mm`,'#e94560','middle',9.5);
-  // Rise label
-  txt(svg,midX-45,(midY+py)/2,`Rise: ${f(rise)} mm`,'#4caf50','middle',9.5);
-  // Radius label
-  const rlx=(cx+x1)/2-12, rly=(cy+y1)/2;
-  txt(svg,rlx-2,rly,`R = ${f(r)} mm`,'#888','end',9);
-  // Angle label
-  txt(svg,cx,cy+16,`${f(angleDeg)}°`,'#666','middle',9);
+  // Minimal in-diagram markers only — full values go in the legend below
+  txt(svg,cx,py-8,'arc','#f5a623','middle',9);
+  txt(svg,cx,cy+14,`${f(angleDeg)}°`,'#888','middle',9);
+
+  legend('arc-legend',[
+    {color:'#888',    name:'Radius',     value:`${f(r)} mm`},
+    {color:'#aaa',    name:'Angle',      value:`${f(angleDeg)}°`},
+    {color:'#f5a623', name:'Arc length', value:`${f(arcLen)} mm`},
+    {color:'#e94560', name:'Chord',      value:`${f(chord)} mm`},
+    {color:'#4caf50', name:'Rise',       value:`${f(rise)} mm`}
+  ]);
 }
 
 // ═══════════════════════════════════════
@@ -855,20 +887,17 @@ function drawSim(progress, p) {
   const corrX=sZone*0.32, corrY=sBD*0.4;
   const corrR=sRR*0.72;
 
-  function drawRoller(cx,cy,r,stroke,label) {
+  function drawRoller(cx,cy,r,stroke) {
     svg.appendChild(el('circle',{cx,cy,r,fill:'#36384a',stroke,  'stroke-width':1.5}));
     svg.appendChild(el('circle',{cx,cy,r:r*0.38,fill:'#50526a',opacity:.6}));
-    // centre dot
     svg.appendChild(el('circle',{cx,cy,r:1.5,fill:'#888'}));
-    if(label) txt(svg,cx,cy-r-5,label,'#555','middle',7);
   }
 
-  drawRoller(-sZone*0.42, backY, sRR, '#666', 'Feed');
-  drawRoller(+sZone*0.42, backY, sRR, '#666', 'Feed');
-  drawRoller(0, bendY, sRR, '#e94560', null);
-  txt(svg,0,bendY+sRR+9,'Bending roller (adjustable)','#e9456077','middle',7);
-  drawRoller(corrX, corrY, corrR, '#777', null);
-  txt(svg,corrX+corrR+4,corrY,'Correction','#44454a','start',7);
+  // Rollers (labelled in the static key below the diagram, not inline)
+  drawRoller(-sZone*0.42, backY, sRR, '#6a8caf');
+  drawRoller(+sZone*0.42, backY, sRR, '#6a8caf');
+  drawRoller(0, bendY, sRR, '#e94560');
+  drawRoller(corrX, corrY, corrR, '#f5a623');
 
   // ── Bar path ──
   // Exit arc: centre of curvature at (-sZone, +sR) — below the exit point
