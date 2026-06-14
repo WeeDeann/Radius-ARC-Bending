@@ -160,14 +160,13 @@ nav button:hover{color:var(--text)}
   </svg>
   <div>
     <h1>Bar Bender Calculator</h1>
-    <p>CER40 &amp; compatible radius benders — circle, arc, bar length &amp; bend simulation</p>
+    <p>CER40 &amp; compatible radius benders — circle, arc &amp; bend simulation</p>
   </div>
 </header>
 
 <nav>
   <button class="active" onclick="showTab('circle',this)">⬤ Circle</button>
   <button onclick="showTab('arc',this)">⌒ Arc</button>
-  <button onclick="showTab('barlen',this)">⟷ Bar Length</button>
   <button onclick="showTab('sim',this)">▶ Simulator</button>
   <button onclick="showTab('tips',this)">✦ Tips</button>
 </nav>
@@ -175,8 +174,8 @@ nav button:hover{color:var(--text)}
 <!-- ══════════════ CIRCLE ══════════════ -->
 <div id="circle" class="tab active">
   <div class="card">
-    <div class="card-title">Circle Calculator</div>
-    <p class="hint">Enter any <strong style="color:#fff">one</strong> value — the others calculate instantly.</p>
+    <div class="card-title">Circle / Ring Calculator</div>
+    <p class="hint">Enter <strong style="color:#fff">Diameter or Radius</strong>. Add bar diameter for an accurate raw cut length including splice allowance.</p>
     <div class="grid">
       <div class="field">
         <label>Diameter (mm)</label>
@@ -187,8 +186,8 @@ nav button:hover{color:var(--text)}
         <input type="number" id="c-r" placeholder="e.g. 300" oninput="solveCircle('r')">
       </div>
       <div class="field">
-        <label>Circumference (mm)</label>
-        <input type="number" id="c-c" placeholder="e.g. 1884.96" oninput="solveCircle('c')">
+        <label>Bar Diameter (mm)</label>
+        <input type="number" id="c-bd" placeholder="e.g. 16" oninput="solveCircle('bd')">
       </div>
     </div>
     <div style="margin-top:.75rem">
@@ -242,54 +241,6 @@ nav button:hover{color:var(--text)}
       <svg id="arc-svg" width="360" height="260"></svg>
     </div>
     <div class="legend" id="arc-legend"></div>
-  </div>
-</div>
-
-<!-- ══════════════ BAR LENGTH ══════════════ -->
-<div id="barlen" class="tab">
-  <div class="card">
-    <div class="card-title">Add Segment</div>
-    <p class="hint">Build up your shape segment by segment. Mix straight sections and bends to get the total bar length you need to cut.</p>
-    <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:.75rem">
-      <div class="field" style="flex:1;min-width:130px">
-        <label>Straight Length (mm)</label>
-        <input type="number" id="bl-s" placeholder="e.g. 300">
-      </div>
-      <button class="btn btn-red" onclick="addSeg('straight')" style="margin-bottom:0">+ Straight</button>
-    </div>
-    <div style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end">
-      <div class="field" style="flex:1;min-width:120px">
-        <label>Radius (mm)</label>
-        <input type="number" id="bl-r" placeholder="e.g. 500">
-      </div>
-      <div class="field" style="flex:1;min-width:120px">
-        <label>Angle (°)</label>
-        <input type="number" id="bl-a" placeholder="e.g. 90">
-      </div>
-      <button class="btn btn-red" onclick="addSeg('arc')" style="margin-bottom:0">+ Arc</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Segments</div>
-    <div id="seg-list"><p class="hint" style="margin:0">No segments yet — add some above.</p></div>
-    <div style="margin-top:.85rem">
-      <div class="total-box">
-        <div>
-          <div class="t-label">Total cut length</div>
-          <div class="t-val" id="bl-total">— mm</div>
-          <div class="t-m" id="bl-m"></div>
-        </div>
-        <button class="btn btn-dark" onclick="clearSegs()" style="margin-left:1rem">Clear all</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Shape Preview</div>
-    <div class="diagram" style="min-height:260px">
-      <svg id="bar-svg" style="width:100%;height:260px"></svg>
-    </div>
   </div>
 </div>
 
@@ -447,20 +398,22 @@ function showTab(id, btn) {
 function solveCircle(from) {
   const dEl=document.getElementById('c-d');
   const rEl=document.getElementById('c-r');
-  const cEl=document.getElementById('c-c');
   let r=null;
-  if(from==='d'&&dEl.value){r=parseFloat(dEl.value)/2}
-  else if(from==='r'&&rEl.value){r=parseFloat(rEl.value)}
-  else if(from==='c'&&cEl.value){r=parseFloat(cEl.value)/(2*π)}
+  if(from==='d'&&dEl.value) r=parseFloat(dEl.value)/2;
+  else if(from==='r'&&rEl.value) r=parseFloat(rEl.value);
+  // bd change: just re-draw with current r
+  if(from==='bd') {
+    const cur=parseFloat(dEl.value)||parseFloat(rEl.value)*2||0;
+    r=cur/2||null;
+  }
   if(r===null||isNaN(r)||r<=0){drawCircleSVG(null);return}
   if(from!=='d'){dEl.value=f(r*2); dEl.classList.add('solved')} else dEl.classList.remove('solved')
   if(from!=='r'){rEl.value=f(r);   rEl.classList.add('solved')} else rEl.classList.remove('solved')
-  if(from!=='c'){cEl.value=f(2*π*r);cEl.classList.add('solved')} else cEl.classList.remove('solved')
   drawCircleSVG(r);
 }
 
 function clearCircle() {
-  ['c-d','c-r','c-c'].forEach(id=>{
+  ['c-d','c-r','c-bd'].forEach(id=>{
     const e=document.getElementById(id);
     e.value=''; e.classList.remove('solved');
   });
@@ -489,16 +442,26 @@ function drawCircleSVG(r) {
   svg.appendChild(el('circle',{cx:dispR,cy:0,r:3.5,fill:'#f5a623'}));
   svg.appendChild(el('circle',{cx:-dispR,cy:0,r:3.5,fill:'#f5a623'}));
   if(r) {
-    // Minimal in-diagram markers only — values go in the legend below
     txt(svg,0,-dispR-8,'Ø','#4fa3e0','middle',11);
     txt(svg,dispR/2,-6,'r','#e94560','middle',11);
-    legend('circle-legend',[
-      {color:'#e94560', name:'Radius',        value:`${f(r)} mm`},
-      {color:'#4fa3e0', name:'Diameter',      value:`${f(r*2)} mm`},
-      {color:'#f5a623', name:'Circumference', value:`${f(2*π*r)} mm`}
-    ]);
+    const circ=2*π*r;
+    const bd=parseFloat(document.getElementById('c-bd').value)||0;
+    const splice=bd>0 ? bd*1.5 : null;
+    const rawLen=splice!==null ? circ+splice : null;
+    const items=[
+      {color:'#e94560', name:'Radius',         value:`${f(r)} mm`},
+      {color:'#4fa3e0', name:'Diameter',        value:`${f(r*2)} mm`},
+      {color:'#888',    name:'Circumference',   value:`${f(circ)} mm`},
+    ];
+    if(splice!==null) {
+      items.push({color:'#f5a623', name:'Splice allowance', value:`${f(splice)} mm`});
+      items.push({color:'#4caf50', name:'Raw cut length',   value:`${f(rawLen)} mm`});
+    } else {
+      items.push({color:'#555', name:'Raw cut length', value:'Enter bar Ø above'});
+    }
+    legend('circle-legend', items);
   } else {
-    txt(svg,0,dispR+18,'Enter a value above','#444','middle',10);
+    txt(svg,0,dispR+18,'Enter diameter or radius','#444','middle',10);
     legend('circle-legend',null);
   }
 }
@@ -647,135 +610,6 @@ function drawArcDiagram(r, angleDeg, arcLen, chord, rise) {
   ]);
 }
 
-// ═══════════════════════════════════════
-//  BAR LENGTH
-// ═══════════════════════════════════════
-let segments=[];
-
-function addSeg(type) {
-  if(type==='straight') {
-    const v=parseFloat(document.getElementById('bl-s').value);
-    if(!v||v<=0){alert('Enter a valid straight length');return}
-    segments.push({type:'straight',length:v});
-    document.getElementById('bl-s').value='';
-  } else {
-    const r=parseFloat(document.getElementById('bl-r').value);
-    const a=parseFloat(document.getElementById('bl-a').value);
-    if(!r||!a||r<=0||a<=0||a>360){alert('Enter valid radius and angle (1–360°)');return}
-    const arcLen=r*a*π/180;
-    segments.push({type:'arc',radius:r,angle:a,length:arcLen});
-    document.getElementById('bl-r').value='';
-    document.getElementById('bl-a').value='';
-  }
-  renderSegments();
-}
-
-function removeSeg(i) {
-  segments.splice(i,1);
-  renderSegments();
-}
-
-function clearSegs() {
-  segments=[];
-  renderSegments();
-}
-
-function renderSegments() {
-  const list=document.getElementById('seg-list');
-  if(!segments.length) {
-    list.innerHTML='<p class="hint" style="margin:0">No segments yet — add some above.</p>';
-    document.getElementById('bl-total').textContent='— mm';
-    document.getElementById('bl-m').textContent='';
-    drawBarShape();
-    return;
-  }
-  let total=0;
-  list.innerHTML='';
-  segments.forEach((seg,i)=>{
-    total+=seg.length;
-    const div=document.createElement('div');
-    div.className='seg-item';
-    const label=seg.type==='straight'
-      ?`Straight`
-      :`Arc  R${seg.radius} mm × ${seg.angle}°`;
-    div.innerHTML=`
-      <span style="color:#555;min-width:22px;font-size:.8rem">${i+1}</span>
-      <span class="seg-label">${label}</span>
-      <span class="seg-val">${f(seg.length)} mm</span>
-      <button class="seg-rm" onclick="removeSeg(${i})" title="Remove">✕</button>
-    `;
-    list.appendChild(div);
-  });
-  document.getElementById('bl-total').textContent=`${f(total)} mm`;
-  document.getElementById('bl-m').textContent=total>=1000?`= ${f(total/1000,3)} m`:'';
-  drawBarShape();
-}
-
-function drawBarShape() {
-  const svg=document.getElementById('bar-svg');
-  svg.innerHTML='';
-  if(!segments.length) {
-    txt(svg,'50%','50%','Shape will appear here','#333','middle',12);
-    // can't use % in SVG text with setAttribute the normal way, use literal
-    svg.innerHTML='<text x="50%" y="50%" text-anchor="middle" fill="#333" font-size="13">Shape will appear here</text>';
-    return;
-  }
-
-  // Trace path, accumulate points for bounding box
-  let x=0,y=0,dir=0; // dir in radians, 0=right
-  const cmds=['M 0 0'];
-  const pts=[[0,0]];
-
-  segments.forEach(seg=>{
-    if(seg.type==='straight') {
-      x+=Math.cos(dir)*seg.length;
-      y+=Math.sin(dir)*seg.length;
-      cmds.push(`L ${x} ${y}`);
-      pts.push([x,y]);
-    } else {
-      const aRad=seg.angle*π/180;
-      const r=seg.radius;
-      // Perpendicular left (turn counterclockwise)
-      const pX=-Math.sin(dir), pY=Math.cos(dir);
-      const cx=x+pX*r, cy=y+pY*r;
-      const newDir=dir+aRad;
-      const ex=cx-(-Math.sin(newDir))*r;
-      const ey=cy-Math.cos(newDir)*r;
-      const la=seg.angle>180?1:0;
-      cmds.push(`A ${r} ${r} 0 ${la} 1 ${ex} ${ey}`);
-      // Sample points on arc for bounds
-      for(let t=0;t<=1;t+=0.1) {
-        const ta=dir+t*aRad;
-        const sx=cx-(-Math.sin(dir+ta-dir+dir))*r; // approximate
-        pts.push([cx+r*Math.sin(dir+t*aRad), cy-r*Math.cos(dir+t*aRad)]);
-      }
-      x=ex; y=ey; dir=newDir;
-    }
-  });
-
-  const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]);
-  const minX=Math.min(...xs), maxX=Math.max(...xs);
-  const minY=Math.min(...ys), maxY=Math.max(...ys);
-  const pad=30;
-  const vx=minX-pad, vy=minY-pad;
-  const vw=Math.max(maxX-minX+pad*2,100);
-  const vh=Math.max(maxY-minY+pad*2,100);
-
-  svg.setAttribute('viewBox',`${vx} ${vy} ${vw} ${vh}`);
-  const sw=Math.max(1.5, Math.min(5, (vw+vh)*0.004));
-
-  // Glow
-  const g=el('path',{d:cmds.join(' '),fill:'none',stroke:'#f5a62333','stroke-width':sw+6,'stroke-linecap':'round','stroke-linejoin':'round'});
-  svg.appendChild(g);
-  // Bar
-  const p=el('path',{d:cmds.join(' '),fill:'none',stroke:'#f5a623','stroke-width':sw,'stroke-linecap':'round','stroke-linejoin':'round'});
-  svg.appendChild(p);
-
-  // Start marker
-  const dm=Math.max(3,(vw+vh)*0.006);
-  svg.appendChild(el('circle',{cx:0,cy:0,r:dm,fill:'#4caf50'}));
-  svg.appendChild(el('circle',{cx:x,cy:y,r:dm,fill:'#e94560'}));
-}
 
 // ═══════════════════════════════════════
 //  SIMULATOR
@@ -846,14 +680,14 @@ function drawSim(progress, p) {
   pts.push([-(RZONE + tailMax), 0]);
   pts.push([-RZONE,0]); pts.push([RZONE,0]);
   pts.push([RZONE + lead, 0]);                          // leading leg pointing right at 0%
-  for(let i=0;i<=48;i++){                               // exit arc at 100%
+  for(let i=0;i<=48;i++){                               // exit arc curves UPWARD (negative y)
     const a=(i/48)*Math.min(targetRad,2*π);
-    pts.push([RZONE + R*Math.sin(a), R*(1-Math.cos(a))]);
+    pts.push([RZONE + R*Math.sin(a), -(R*(1-Math.cos(a)))]);
   }
   const tipx=RZONE + R*Math.sin(targetRad) + lead*Math.cos(targetRad);
-  const tipy=R*(1-Math.cos(targetRad)) + lead*Math.sin(targetRad);
+  const tipy=-(R*(1-Math.cos(targetRad))) - lead*Math.sin(targetRad);
   pts.push([tipx, tipy]);
-  pts.push([0, -RZONE*0.6]);                            // headroom for rollers
+  pts.push([0, RZONE*0.6]);                             // headroom below bar for bending roller
 
   const xs=pts.map(q=>q[0]), ys=pts.map(q=>q[1]);
   const minX=Math.min(...xs), maxX=Math.max(...xs);
@@ -882,13 +716,13 @@ function drawSim(progress, p) {
   drawRoller(0, bendY, sRR, '#e94560');
 
   // ── Bar path ──
-  // Exit arc: centre (sZone, sR); from (sZone,0) sweeping right & down (sweep=0)
+  // Exit arc curves UPWARD: centre at (sZone, -sR); sweep=1 (CW in SVG = upward)
   const curAex=sZone + sR*Math.sin(curRadC);
-  const curAey=sR*(1-Math.cos(curRadC));
+  const curAey=-(sR*(1-Math.cos(curRadC)));             // negative = upward on screen
   const la=curRadC>π?1:0;
-  // Leading leg tangent at arc end
+  // Tangent at arc end: (cos θ, -sin θ) — confirmed upward at 90°
   const leadEx=curAex + sLead*Math.cos(curRadC);
-  const leadEy=curAey + sLead*Math.sin(curRadC);
+  const leadEy=curAey - sLead*Math.sin(curRadC);
 
   // Feed tail (left): remaining unbent arc + trailing leg, capped
   const tailMm=Math.min((1-progress)*p.arcLen + tail, R*2 + tail);
@@ -899,7 +733,7 @@ function drawSim(progress, p) {
   if(progress>0.005){
     exitSeg = curAngleDeg<0.3
       ? `M ${sZone} 0 L ${curAex} ${curAey}`
-      : `M ${sZone} 0 A ${sR} ${sR} 0 ${la} 0 ${curAex} ${curAey}`;
+      : `M ${sZone} 0 A ${sR} ${sR} 0 ${la} 1 ${curAex} ${curAey}`;
     if(sLead>0) exitSeg += ` L ${leadEx} ${leadEy}`;
   } else {
     exitSeg = `M ${sZone} 0 L ${sZone+sLead} 0`; // straight, ready to bend
@@ -922,7 +756,8 @@ function drawSim(progress, p) {
   if(curAngleDeg>2){
     const ma=curRadC/2;
     const lblR=sR + sBD + 14;
-    txt(svg, sZone + lblR*Math.sin(ma), sR - lblR*Math.cos(ma), `${f(curAngleDeg)}°`, '#f5a623', 'middle', 10);
+    // label on the outer/convex face of the upward arc
+    txt(svg, sZone + lblR*Math.sin(ma), -(sR - lblR*Math.cos(ma)), `${f(curAngleDeg)}°`, '#f5a623', 'middle', 10);
   }
 
   // End markers
