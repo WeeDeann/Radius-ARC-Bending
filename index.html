@@ -53,7 +53,8 @@ nav button:hover{color:var(--text)}
 
 /* INPUTS */
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.75rem}
-.field label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:.3rem}
+.field label{display:flex;align-items:center;gap:.4rem;font-size:.75rem;color:var(--muted);margin-bottom:.3rem}
+.field label .dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
 .field input{
   width:100%;padding:.65rem .9rem;
   background:var(--bg);border:1px solid var(--border);
@@ -86,7 +87,7 @@ nav button:hover{color:var(--text)}
 .legend .lg{
   display:flex;align-items:center;gap:.5rem;
   background:var(--bg);border:1px solid var(--border);
-  border-radius:7px;padding:.45rem .7rem;font-size:.82rem;flex:1;min-width:120px
+  border-radius:7px;padding:.45rem .7rem;font-size:.82rem;flex:1 1 auto
 }
 .legend .lg .sw{width:16px;height:4px;border-radius:2px;flex-shrink:0}
 .legend .lg .nm{color:var(--muted);white-space:nowrap}
@@ -178,23 +179,27 @@ nav button:hover{color:var(--text)}
     <p class="hint">Like the Arc tab, but for full rings. Enter <strong style="color:#fff">Radius</strong> (#1 from your bar schedule) plus your <strong style="color:#fff">Raw Bar Length</strong> — it works out the splice / overlap. Enter any sufficient pair and the rest solve. Bar Diameter gives a recommended overlap.</p>
     <div class="grid">
       <div class="field">
-        <label>Radius (mm)</label>
+        <label><span class="dot" style="background:#e94560"></span>Radius (mm)</label>
         <input type="number" id="c-r" placeholder="e.g. 300" oninput="circInput('c-r')">
       </div>
       <div class="field">
-        <label>Circumference (mm)</label>
+        <label><span class="dot" style="background:#2dd4bf"></span>Circumference (mm)</label>
         <input type="number" id="c-c" placeholder="e.g. 1885" oninput="circInput('c-c')">
       </div>
       <div class="field">
-        <label>Raw Bar Length (mm)</label>
+        <label><span class="dot" style="background:#b07cf0"></span>Bar Circumference (mm)</label>
+        <input type="number" id="c-bc" placeholder="from bar Ø" oninput="circInput('c-bc')">
+      </div>
+      <div class="field">
+        <label><span class="dot" style="background:#aaa"></span>Raw Bar Length (mm)</label>
         <input type="number" id="c-raw" placeholder="e.g. 1920" oninput="circInput('c-raw')">
       </div>
       <div class="field">
-        <label>Splice / Overlap (mm)</label>
+        <label><span class="dot" style="background:#4caf50"></span>Splice / Overlap (mm)</label>
         <input type="number" id="c-sp" placeholder="e.g. 35" oninput="circInput('c-sp')">
       </div>
       <div class="field">
-        <label>Bar Diameter (mm)</label>
+        <label><span class="dot" style="background:#b07cf0"></span>Bar Diameter (mm)</label>
         <input type="number" id="c-bd" placeholder="e.g. 16" oninput="circInput('c-bd')">
       </div>
     </div>
@@ -407,11 +412,28 @@ const CIRC_IDS = ['c-r','c-c','c-raw','c-sp'];
 let circUserSet = new Set();
 
 function circInput(id) {
-  if(id!=='c-bd') {                       // bar dia is guidance only, not a solver field
-    const v=parseFloat(document.getElementById(id).value);
-    if(!isNaN(v)) circUserSet.add(id); else circUserSet.delete(id);
+  if(id==='c-bd' || id==='c-bc') {        // bar Ø & bar circumference: guidance only, mutually linked
+    syncBar(id);
+    solveCircle();                        // refresh recommended-overlap legend
+    return;
   }
+  const v=parseFloat(document.getElementById(id).value);
+  if(!isNaN(v)) circUserSet.add(id); else circUserSet.delete(id);
   solveCircle();
+}
+
+// Bar diameter and bar circumference are inverses: barCirc = π × barØ
+function syncBar(id) {
+  const bd=document.getElementById('c-bd'), bc=document.getElementById('c-bc');
+  if(id==='c-bd') {
+    const v=parseFloat(bd.value);
+    if(!isNaN(v)&&v>0){ bc.value=f(π*v); bc.classList.add('solved'); }
+    else { bc.value=''; bc.classList.remove('solved'); }
+  } else {
+    const v=parseFloat(bc.value);
+    if(!isNaN(v)&&v>0){ bd.value=f(v/π); bd.classList.add('solved'); }
+    else { bd.value=''; bd.classList.remove('solved'); }
+  }
 }
 
 function solveCircle() {
@@ -456,7 +478,7 @@ function setCircField(id, val) {
 
 function clearCircle() {
   circUserSet.clear();
-  ['c-r','c-c','c-raw','c-sp','c-bd'].forEach(id=>{
+  ['c-r','c-c','c-raw','c-sp','c-bd','c-bc'].forEach(id=>{
     const e=document.getElementById(id);
     e.value=''; e.classList.remove('solved');
   });
@@ -498,18 +520,21 @@ function drawCircleSVG(r, info) {
   }
 
   const bd=parseFloat(document.getElementById('c-bd').value)||0;
+  const bc=parseFloat(document.getElementById('c-bc').value)||0;
   const recSplice = bd>0 ? bd*1.5 : null;
 
   const items=[
     {color:'#e94560', name:'Radius',        value:`${f(r)} mm`},
     {color:'#4fa3e0', name:'Diameter',      value:`${f(r*2)} mm`},
-    {color:'#888',    name:'Circumference', value:`${f(circ)} mm`},
+    {color:'#2dd4bf', name:'Circumference', value:`${f(circ)} mm`},
   ];
   if(raw!=null) items.push({color:'#aaa', name:'Raw bar length', value:`${f(raw)} mm`});
   if(sp!=null){
     if(sp>=0) items.push({color:'#4caf50', name:'Splice / overlap', value:`${f(sp)} mm`});
     else      items.push({color:'#e94560', name:'Bar too short by', value:`${f(-sp)} mm`});
   }
+  if(bd>0) items.push({color:'#b07cf0', name:'Bar Ø',            value:`${f(bd)} mm`});
+  if(bc>0) items.push({color:'#b07cf0', name:'Bar circumference', value:`${f(bc)} mm`});
   if(recSplice!=null){
     items.push({color:'#f5a623', name:'Recommended overlap', value:`≈ ${f(recSplice)} mm (1.5× bar Ø)`});
     if(raw==null) items.push({color:'#f5a623', name:'Suggested raw length', value:`${f(circ+recSplice)} mm`});
@@ -738,8 +763,13 @@ function drawSim(progress, p) {
   // Work in real mm, compute scale from bounding box of all states
   const RZONE=Math.max(R*0.13, 45); // half-width of roller zone (mm)
 
+  // Visual feed stub: don't reserve space for the whole unbent bar — it would
+  // squash the exit arc and make the bend look too steep. A modest stub keeps
+  // the exit curve large, so it reads as the gradual sweep the bar really makes.
+  const tailCap=Math.max(R*0.55, RZONE*3);
+
   const pts=[];
-  const tailMax=Math.min(p.arcLen + tail, R*2 + tail); // feed tail at 0% (longest)
+  const tailMax=Math.min(p.arcLen + tail, tailCap + tail); // feed tail at 0% (longest)
   pts.push([-(RZONE + tailMax), 0]);
   pts.push([-RZONE,0]); pts.push([RZONE,0]);
   pts.push([RZONE + lead, 0]);                          // leading leg pointing right at 0%
@@ -792,7 +822,7 @@ function drawSim(progress, p) {
   const leadEy=curAey + sLead*Math.sin(curRadC);
 
   // Feed tail (left): remaining unbent arc + trailing leg, capped
-  const tailMm=Math.min((1-progress)*p.arcLen + tail, R*2 + tail);
+  const tailMm=Math.min((1-progress)*p.arcLen + tail, tailCap + tail);
   const tailEndX=-sZone - tailMm*sc;
 
   // Build path segments
