@@ -312,12 +312,12 @@ nav button:hover{color:var(--text)}
         <input type="number" id="sim-bd" value="16" oninput="calcSimInputs()">
       </div>
       <div class="field">
-        <label>Left Straight Leg (mm)</label>
-        <input type="number" id="sim-ll" placeholder="0 = fully bent" oninput="calcSimInputs()">
+        <label>Leading Leg (mm)</label>
+        <input type="number" id="sim-ll" placeholder="straight tip, 0 = none" oninput="calcSimInputs()">
       </div>
       <div class="field">
-        <label>Right Straight Leg (mm)</label>
-        <input type="number" id="sim-rl" placeholder="0 = fully bent" oninput="calcSimInputs()">
+        <label>Trailing Leg (mm)</label>
+        <input type="number" id="sim-rl" placeholder="straight tail, 0 = none" oninput="calcSimInputs()">
       </div>
     </div>
     <div class="stat-grid" id="sim-calcs" style="margin-bottom:1rem"></div>
@@ -341,7 +341,7 @@ nav button:hover{color:var(--text)}
     <div class="legend">
       <div class="lg"><span class="sw" style="background:#6a8caf;height:12px;width:12px;border-radius:50%"></span><span class="nm">Feed rollers (fixed)</span></div>
       <div class="lg"><span class="sw" style="background:#e94560;height:12px;width:12px;border-radius:50%"></span><span class="nm">Bending roller (adjust)</span></div>
-      <div class="lg"><span class="sw" style="background:#f5a623;height:12px;width:12px;border-radius:50%"></span><span class="nm">Correction roller</span></div>
+      <div class="lg"><span class="sw" style="background:#4caf50;height:12px;width:12px;border-radius:50%"></span><span class="nm">Leading tip · feeds in from left</span></div>
     </div>
   </div>
 </div>
@@ -786,18 +786,18 @@ function simParams() {
   const BL=parseFloat(document.getElementById('sim-bl').value)||0;
   const R =parseFloat(document.getElementById('sim-r').value)||0;
   const BD=parseFloat(document.getElementById('sim-bd').value)||16;
-  const LL=parseFloat(document.getElementById('sim-ll').value)||0;
-  const RL=parseFloat(document.getElementById('sim-rl').value)||0;
-  const arcLen=Math.max(0, BL-LL-RL);
+  const lead=parseFloat(document.getElementById('sim-ll').value)||0; // straight tip (exit/right)
+  const tail=parseFloat(document.getElementById('sim-rl').value)||0; // straight tail (feed/left)
+  const arcLen=Math.max(0, BL-lead-tail);
   const angleDeg=R>0&&arcLen>0 ? arcLen/R*180/π : 0;
-  return {BL,R,BD,LL,RL,arcLen,angleDeg};
+  return {BL,R,BD,lead,tail,arcLen,angleDeg};
 }
 
 function calcSimInputs() {
   const p=simParams();
   const el2=document.getElementById('sim-calcs');
   if(p.BL>0&&p.R>0) {
-    const warn=p.BL<=p.LL+p.RL
+    const warn=p.BL<=p.lead+p.tail
       ?'<div class="stat-box" style="border-color:#e94560"><div class="s-label" style="color:#e94560">Warning</div><div class="s-val" style="color:#e94560;font-size:.85rem">Legs exceed bar length</div></div>'
       :(p.angleDeg>360?'<div class="stat-box" style="border-color:#f5a623"><div class="s-label" style="color:#f5a623">Note</div><div class="s-val" style="color:#f5a623;font-size:.85rem">Over full circle</div></div>':'');
     el2.innerHTML=`
@@ -830,38 +830,30 @@ function drawSim(progress, p) {
   }
 
   // ── Top-down view of the roller table ──
-  // Bar feeds RIGHT → LEFT through the rollers.
-  // Two fixed back rollers (far side of machine, top of view).
-  // One adjustable bending roller (front, bottom of view) — creates the curve.
-  // One correction roller (slightly right, middle).
-  // Exit arc builds on the LEFT as bar feeds through.
-
-  const R=p.R, BD=p.BD, LL=p.LL, RL=p.RL;
+  // Bar feeds LEFT → RIGHT through the rollers and exits curving to the RIGHT.
+  // Two fixed feed rollers (top of view) + one adjustable bending roller (bottom).
+  const R=p.R, BD=p.BD, lead=p.lead, tail=p.tail;
   const targetRad=p.angleDeg*π/180;
   const curRad=targetRad*progress;
+  const curRadC=Math.min(curRad, 2*π*0.999); // clamp drawing at one full turn
   const curAngleDeg=p.angleDeg*progress;
 
-  // Work in real mm, compute scale from final bounding box
-  const RZONE=Math.max(R*0.13, 45); // half-width of roller zone in mm
+  // Work in real mm, compute scale from bounding box of all states
+  const RZONE=Math.max(R*0.13, 45); // half-width of roller zone (mm)
 
-  // Final shape sample points (mm) for bounding box
   const pts=[];
-  // Entry side at 100%: right leg
-  pts.push([RZONE+RL, 0]);
-  // Rollers zone
-  pts.push([RZONE,0]);pts.push([-RZONE,0]);
-  // Exit arc at 100%
-  for(let i=0;i<=48;i++){
-    const a=(i/48)*targetRad;
-    pts.push([-RZONE - R*Math.sin(a), R*(1-Math.cos(a))]);
+  const tailMax=Math.min(p.arcLen + tail, R*2 + tail); // feed tail at 0% (longest)
+  pts.push([-(RZONE + tailMax), 0]);
+  pts.push([-RZONE,0]); pts.push([RZONE,0]);
+  pts.push([RZONE + lead, 0]);                          // leading leg pointing right at 0%
+  for(let i=0;i<=48;i++){                               // exit arc at 100%
+    const a=(i/48)*Math.min(targetRad,2*π);
+    pts.push([RZONE + R*Math.sin(a), R*(1-Math.cos(a))]);
   }
-  // Left leg at 100%
-  const aex=-RZONE-R*Math.sin(targetRad), aey=R*(1-Math.cos(targetRad));
-  if(LL>0) pts.push([aex-LL*Math.cos(targetRad), aey+LL*Math.sin(targetRad)]);
-  // Entry bar at 0% (cap at 2R so a long entry bar doesn't crush the scale)
-  pts.push([RZONE + Math.min(RL + p.arcLen, R*2 + RL), 0]);
-  // Space for rollers above bar
-  pts.push([0, -RZONE*0.5]);
+  const tipx=RZONE + R*Math.sin(targetRad) + lead*Math.cos(targetRad);
+  const tipy=R*(1-Math.cos(targetRad)) + lead*Math.sin(targetRad);
+  pts.push([tipx, tipy]);
+  pts.push([0, -RZONE*0.6]);                            // headroom for rollers
 
   const xs=pts.map(q=>q[0]), ys=pts.map(q=>q[1]);
   const minX=Math.min(...xs), maxX=Math.max(...xs);
@@ -870,104 +862,75 @@ function drawSim(progress, p) {
   const shapeW=maxX-minX+2*pad, shapeH=maxY-minY+2*pad;
   const sc=Math.min(460/shapeW, 310/shapeH);
 
-  const sR=R*sc, sLL=LL*sc, sRL=RL*sc, sZone=RZONE*sc;
+  const sR=R*sc, sLead=lead*sc, sZone=RZONE*sc;
   const sBD=Math.max(3,Math.min(15,BD*sc*0.6));
-  const sRR=Math.max(9,Math.min(22,sZone*0.42)); // roller visual radius
+  const sRR=Math.max(9,Math.min(22,sZone*0.42));
 
-  // Set viewBox
   const vx=(minX-pad)*sc, vy=(minY-pad)*sc;
   svg.setAttribute('viewBox',`${vx} ${vy} ${shapeW*sc} ${shapeH*sc}`);
 
-  // ── Roller positions ──
-  // Back rollers (fixed, top of view = negative y): at ±sZone*0.42, y = -(sRR + sBD/2 + 1)
-  const backY=-(sRR+sBD/2+1);
-  // Bending roller (front, bottom of view = positive y): (0, +(sRR + sBD/2 + 1))
-  const bendY=sRR+sBD/2+1;
-  // Correction roller: slightly right, between back and bending
-  const corrX=sZone*0.32, corrY=sBD*0.4;
-  const corrR=sRR*0.72;
-
-  function drawRoller(cx,cy,r,stroke) {
-    svg.appendChild(el('circle',{cx,cy,r,fill:'#36384a',stroke,  'stroke-width':1.5}));
+  // ── Rollers ──
+  const backY=-(sRR+sBD/2+1);   // feed rollers (top)
+  const bendY=sRR+sBD/2+1;      // bending roller (bottom centre)
+  function drawRoller(cx,cy,r,stroke){
+    svg.appendChild(el('circle',{cx,cy,r,fill:'#36384a',stroke,'stroke-width':1.5}));
     svg.appendChild(el('circle',{cx,cy,r:r*0.38,fill:'#50526a',opacity:.6}));
     svg.appendChild(el('circle',{cx,cy,r:1.5,fill:'#888'}));
   }
-
-  // Rollers (labelled in the static key below the diagram, not inline)
   drawRoller(-sZone*0.42, backY, sRR, '#6a8caf');
   drawRoller(+sZone*0.42, backY, sRR, '#6a8caf');
   drawRoller(0, bendY, sRR, '#e94560');
-  drawRoller(corrX, corrY, corrR, '#f5a623');
 
   // ── Bar path ──
-  // Exit arc: centre of curvature at (-sZone, +sR) — below the exit point
-  // Arc sweeps CLOCKWISE in SVG (sweep=1), from (-sZone,0) curving downward
-  const curAex=-sZone-sR*Math.sin(curRad);
-  const curAey=sR*(1-Math.cos(curRad));
-  const la=curAngleDeg>180?1:0;
+  // Exit arc: centre (sZone, sR); from (sZone,0) sweeping right & down (sweep=0)
+  const curAex=sZone + sR*Math.sin(curRadC);
+  const curAey=sR*(1-Math.cos(curRadC));
+  const la=curRadC>π?1:0;
+  // Leading leg tangent at arc end
+  const leadEx=curAex + sLead*Math.cos(curRadC);
+  const leadEy=curAey + sLead*Math.sin(curRadC);
 
-  // Left leg tangent direction after arc
-  const ltx=-Math.cos(curRad), lty=Math.sin(curRad);
-  const llEx=curAex+sLL*ltx, llEy=curAey+sLL*lty;
-
-  // Entry bar (right side): remaining arc + right leg, capped visually
-  const remainMm=(1-progress)*p.arcLen;
-  const entryMm=Math.min(remainMm+RL, R*2+RL);
-  const entryEndX=sZone+entryMm*sc;
+  // Feed tail (left): remaining unbent arc + trailing leg, capped
+  const tailMm=Math.min((1-progress)*p.arcLen + tail, R*2 + tail);
+  const tailEndX=-sZone - tailMm*sc;
 
   // Build path segments
-  let exitSeg='';
-  if(progress>0.005) {
-    if(curAngleDeg<0.3) {
-      exitSeg=`M ${-sZone} 0 L ${curAex} ${curAey}`;
-    } else {
-      exitSeg=`M ${-sZone} 0 A ${sR} ${sR} 0 ${la} 1 ${curAex} ${curAey}`;
-    }
-    if(sLL>0) exitSeg+=` L ${llEx} ${llEy}`;
+  let exitSeg;
+  if(progress>0.005){
+    exitSeg = curAngleDeg<0.3
+      ? `M ${sZone} 0 L ${curAex} ${curAey}`
+      : `M ${sZone} 0 A ${sR} ${sR} 0 ${la} 0 ${curAex} ${curAey}`;
+    if(sLead>0) exitSeg += ` L ${leadEx} ${leadEy}`;
+  } else {
+    exitSeg = `M ${sZone} 0 L ${sZone+sLead} 0`; // straight, ready to bend
   }
   const throughSeg=`M ${-sZone} 0 L ${sZone} 0`;
-  const entrySeg=`M ${sZone} 0 L ${entryEndX} 0`;
-  const allPath=[exitSeg,throughSeg,entrySeg].filter(Boolean).join(' ');
+  const tailSeg=`M ${-sZone} 0 L ${tailEndX} 0`;
+  const allPath=[tailSeg,throughSeg,exitSeg].join(' ');
 
   // Draw: glow → body → highlight
   svg.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a903322','stroke-width':sBD+10,'stroke-linecap':'round','stroke-linejoin':'round'}));
   svg.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a9098','stroke-width':sBD,'stroke-linecap':'round','stroke-linejoin':'round'}));
   svg.appendChild(el('path',{d:allPath,fill:'none',stroke:'#c8d2e0','stroke-width':sBD*0.2,'stroke-linecap':'round','stroke-linejoin':'round',opacity:.6}));
 
-  // Feed direction arrow on entry bar
-  if(entryEndX>sZone+10){
-    const arrX=sZone+Math.min(entryMm*sc*0.5, 40);
-    txt(svg,arrX,-sBD-4,'← feed','#3a3a4a','middle',7);
-    svg.appendChild(el('path',{d:`M ${sZone+8} -3 L ${sZone} 0 L ${sZone+8} 3`,fill:'none',stroke:'#3a3a4a','stroke-width':1}));
+  // Feed direction arrow on the tail (points right, into the rollers)
+  const arrX=-sZone - Math.min(tailMm*sc*0.5, 44);
+  txt(svg, arrX, -sBD-5, 'feed →', '#56586a', 'middle', 8);
+  svg.appendChild(el('path',{d:`M ${-sZone-9} -3 L ${-sZone} 0 L ${-sZone-9} 3`,fill:'none',stroke:'#56586a','stroke-width':1}));
+
+  // Current angle label on the convex side of the arc
+  if(curAngleDeg>2){
+    const ma=curRadC/2;
+    const lblR=sR + sBD + 14;
+    txt(svg, sZone + lblR*Math.sin(ma), sR - lblR*Math.cos(ma), `${f(curAngleDeg)}°`, '#f5a623', 'middle', 10);
   }
 
-  // Bend angle annotation
-  if(curAngleDeg>2) {
-    const indR=Math.min(sZone*0.7, sR*0.28);
-    const iac=-sZone; // anchor x
-    const iix2=iac-indR*Math.sin(curRad);
-    const iiy2=indR*(1-Math.cos(curRad));
-    const ila=curAngleDeg>180?1:0;
-    svg.appendChild(el('path',{
-      d:`M ${iac} ${-indR} A ${indR} ${indR} 0 ${ila} 1 ${iix2} ${iiy2}`,
-      fill:'none',stroke:'#f5a623','stroke-width':1,'stroke-dasharray':'3 2',opacity:.65
-    }));
-    const ma=curRad/2;
-    const lr=indR+12;
-    txt(svg,iac-lr*Math.sin(ma),lr*(1-Math.cos(ma))-indR,`${f(curAngleDeg)}°`,'#f5a62399','middle',9);
-  }
-
-  // Bar end markers
+  // End markers
   const dotR=Math.max(3,sBD*0.5);
-  // Start of bar (right end)
-  svg.appendChild(el('circle',{cx:entryEndX,cy:0,r:dotR,fill:'#e94560',opacity:.85}));
-  // End of bar (left/exit end)
-  if(progress>0.005) {
-    const ex2=sLL>0?llEx:curAex, ey2=sLL>0?llEy:curAey;
-    svg.appendChild(el('circle',{cx:ex2,cy:ey2,r:dotR,fill:'#4caf50',opacity:.85}));
-  } else {
-    svg.appendChild(el('circle',{cx:-sZone-(RL>0?sRL:(p.arcLen>0?Math.min(p.arcLen*sc,sR*0.3):0)),cy:0,r:dotR,fill:'#4caf50',opacity:.85}));
-  }
+  const tipX=(progress>0.005) ? (sLead>0?leadEx:curAex) : (sZone+sLead);
+  const tipY=(progress>0.005) ? (sLead>0?leadEy:curAey) : 0;
+  svg.appendChild(el('circle',{cx:tipX,cy:tipY,r:dotR,fill:'#4caf50',opacity:.9}));   // leading tip (out first)
+  svg.appendChild(el('circle',{cx:tailEndX,cy:0,r:dotR,fill:'#e94560',opacity:.9})); // trailing tail (feeding)
 }
 
 function animateSim() {
@@ -1001,7 +964,7 @@ function resetSim() {
 // ── Init ──
 drawCircleSVG(null);
 drawArcDiagram(null,null,null,null,null);
-drawSim(0, {BL:0,R:0,BD:16,LL:0,RL:0,arcLen:0,angleDeg:0});
+drawSim(0, {BL:0,R:0,BD:16,lead:0,tail:0,arcLen:0,angleDeg:0});
 </script>
 </body>
 </html>
