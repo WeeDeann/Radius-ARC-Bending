@@ -554,7 +554,6 @@ function drawCircleSVG(r, info) {
   }
 
   const bd=parseFloat(document.getElementById('c-bd').value)||0;
-  const bc=bd>0 ? π*bd : 0;   // bar circumference = π × bar Ø (shown in legend only)
   const recSplice = bd>0 ? bd*1.5 : null;
 
   const items=[
@@ -568,7 +567,6 @@ function drawCircleSVG(r, info) {
     else      items.push({color:'#e94560', name:'Bar too short by', value:`${f(-sp)} mm`});
   }
   if(bd>0) items.push({color:'#b07cf0', name:'Bar Ø',            value:`${f(bd)} mm`});
-  if(bc>0) items.push({color:'#b07cf0', name:'Bar circumference', value:`${f(bc)} mm`});
   if(recSplice!=null){
     items.push({color:'#f5a623', name:'Recommended overlap', value:`≈ ${f(recSplice)} mm (1.5× bar Ø)`});
     if(raw==null) items.push({color:'#f5a623', name:'Suggested Raw Bar Length', value:`${f(circ+recSplice)} mm`});
