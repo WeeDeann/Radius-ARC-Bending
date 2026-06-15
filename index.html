@@ -176,7 +176,7 @@ nav button:hover{color:var(--text)}
 <div id="circle" class="tab active">
   <div class="card">
     <div class="card-title">Circle / Ring Calculator</div>
-    <p class="hint">Like the Arc tab, but for full rings. Enter <strong style="color:#fff">Radius</strong> (#1 from your bar schedule) plus your <strong style="color:#fff">Raw Bar Length</strong> — it works out the splice / overlap. Enter any sufficient pair and the rest solve. Bar Diameter gives a recommended overlap.</p>
+    <p class="hint">Enter <strong style="color:#fff">Radius</strong> (#1 from your bar schedule) and any other known value — the rest solve automatically. <em>Radius is measured to the bar centreline (neutral axis). Inside radius = this value − half bar Ø.</em></p>
     <div class="grid">
       <div class="field">
         <label><span class="dot" style="background:#e94560"></span>Radius (mm)</label>
@@ -185,10 +185,6 @@ nav button:hover{color:var(--text)}
       <div class="field">
         <label><span class="dot" style="background:#2dd4bf"></span>Circumference (mm)</label>
         <input type="number" id="c-c" placeholder="e.g. 1885" oninput="circInput('c-c')">
-      </div>
-      <div class="field">
-        <label><span class="dot" style="background:#b07cf0"></span>Bar Circumference (mm)</label>
-        <input type="number" id="c-bc" placeholder="from bar Ø" oninput="circInput('c-bc')">
       </div>
       <div class="field">
         <label><span class="dot" style="background:#aaa"></span>Raw Bar Length (mm)</label>
@@ -220,16 +216,13 @@ nav button:hover{color:var(--text)}
 <div id="arc" class="tab">
   <div class="card">
     <div class="card-title">Arc Calculator</div>
-    <p class="hint">Enter any <strong style="color:#fff">two</strong> values — all others solve automatically.<br>
+    <p class="hint">Enter any <strong style="color:#fff">two</strong> values — all others solve automatically. Angle is a calculated output shown in the diagram.<br>
+    <em>Radius is to the bar centreline. Inside radius = this value − half bar Ø.</em><br>
     Tip: <strong style="color:#fff">Chord + Rise</strong> is ideal when measuring an existing arch or template.</p>
     <div class="grid">
       <div class="field">
         <label>Radius (mm)</label>
         <input type="number" id="a-r" placeholder="e.g. 600" oninput="arcInput('a-r')">
-      </div>
-      <div class="field">
-        <label>Angle (°)</label>
-        <input type="number" id="a-a" placeholder="e.g. 90" oninput="arcInput('a-a')">
       </div>
       <div class="field">
         <label>Arc Length (mm)</label>
@@ -307,7 +300,7 @@ nav button:hover{color:var(--text)}
       <div class="lg"><span class="sw" style="background:#e94560;height:12px;width:12px;border-radius:50%"></span><span class="nm">Bending roller (adjust)</span></div>
       <div class="lg"><span class="sw" style="background:#4caf50;height:12px;width:12px;border-radius:50%"></span><span class="nm">Leading tip · feeds in from left</span></div>
     </div>
-    <p class="hint" style="margin-top:.75rem">The <strong style="color:#fff">correction roller</strong> (not shown) is used to fine-tune the bend — apply minimal pressure only. Adjustment varies per bend.</p>
+    <p class="hint" style="margin-top:.75rem">The <strong style="color:#fff">correction roller</strong> (not shown) applies minimal down-pressure to fine-tune the bend and can assist in controlling the tail end of the bar as it exits. It can be removed when not needed — adjustment varies per bend.</p>
   </div>
 </div>
 
@@ -320,45 +313,44 @@ nav button:hover{color:var(--text)}
 
   <div class="tip">
     <h3>Springback — always overbend</h3>
-    <p>All steel springs back after bending due to elastic recovery. For <strong>mild steel</strong> expect <strong>2–5° springback</strong>; for harder grades or high-tensile rebar this can reach <strong>8–15°</strong>. The tighter the radius relative to bar diameter, the more springback you'll see. Bend, release, and measure — adjust your machine setting and repeat until you hit the target. Note this offset for future bends with the same bar and radius.</p>
-  </div>
-
-  <div class="tip">
-    <h3>Bend Allowance — the bar lengthens</h3>
-    <p>When a bar bends, the <strong>neutral axis</strong> (which neither stretches nor compresses) sits roughly <strong>45–50% of the bar diameter</strong> from the inner face. The outer surface stretches and the inner compresses. For most practical CER40 work the effect is small — calculate your arc length at the centrelineradius and trim to final fit if precision is critical. For tight bends on thick bar, add a small allowance (roughly 0.5× bar diameter per 90°).</p>
-  </div>
-
-  <div class="tip">
-    <h3>Minimum Bend Radius</h3>
-    <p>Bending too tight will crack the outer surface. As a practical guide:<br>
-    — <strong>Up to 12mm bar:</strong> minimum radius ≈ 2× bar diameter<br>
-    — <strong>16–25mm bar:</strong> minimum radius ≈ 3–4× bar diameter<br>
-    — <strong>25mm+ bar:</strong> minimum radius ≈ 4–6× bar diameter<br>
-    The CER40's die set also sets a hard limit — your die bore diameter determines the tightest radius you can achieve for each bar size.</p>
+    <p>All steel springs back after bending. How much depends on <strong>grade</strong> and <strong>bar size</strong>:<br>
+    — <strong>B500B / B500C rebar (most common):</strong> expect <strong>3–8°</strong> springback; higher-yield C-grade bars tend to spring back more than B-grade.<br>
+    — <strong>Mild steel (S235/S275):</strong> less springback, roughly <strong>2–5°</strong>.<br>
+    — <strong>Stainless steel:</strong> significantly more — <strong>10–20°</strong> or more depending on grade and temper.<br>
+    Larger bar diameter and tighter radius both increase springback. Temperature has a minor effect — cold bar (winter/outdoor storage) can spring back slightly more. Bend, release, and measure — note the offset and apply it to all subsequent bends with the same bar and radius.</p>
   </div>
 
   <div class="tip">
     <h3>Measuring an Arch from a Template</h3>
-    <p>If you have a physical arch to match (window head, door frame, decorative element), measure two things: the <strong>chord</strong> (straight line across the opening) and the <strong>rise</strong> (height from chord midpoint to arch peak). Enter both into the <strong>Arc Calculator</strong> — it will give you the exact radius and arc length to program into your bender. This is usually more accurate than trying to measure the radius directly.</p>
+    <p>If you have a physical arch to match (window head, door frame, decorative element), measure two things: the <strong>chord</strong> (straight line across the opening) and the <strong>rise</strong> (height from chord midpoint to arch peak). Enter both into the <strong>Arc Calculator</strong> — it will give you the exact radius and arc length. This is usually more accurate than trying to measure the radius directly.</p>
   </div>
 
   <div class="tip">
     <h3>Full Rings &amp; Circles</h3>
-    <p>For a complete ring, use the <strong>Circle Calculator</strong> — the circumference is your cut bar length. Add <strong>1–2× bar diameter</strong> extra for weld overlap. You'll almost certainly need to overbend past 360° to account for springback, then clamp and allow the ring to relax to round. For large-diameter rings, make multiple progressive passes rather than trying to complete the bend in one go.</p>
-  </div>
-
-  <div class="tip">
-    <h3>Multi-Segment Shapes</h3>
-    <p>Use the <strong>Bar Length</strong> tab to plan shapes that mix straight sections with bends (arched gates, balustrade components, frames). Add each segment in order — the calculator sums the arc lengths for each curved section. Always mark your bar with a permanent marker at each bend start point before loading into the machine, and keep consistent feed direction to avoid twist.</p>
+    <p>For a complete ring, use the <strong>Circle Calculator</strong> to find your raw bar length (circumference + splice/overlap). Feed the bar in one continuous pass through the machine — the CER40 is a die-type bender and forms the ring progressively as the bar travels through, so a single consistent pass gives the best result. Overbend slightly to account for springback, then check roundness. Add <strong>1.5–2× bar diameter</strong> extra length for weld overlap.</p>
   </div>
 
   <div class="tip">
     <h3>CER40 Practical Tips</h3>
-    <p>— <strong>Mark from the centre</strong> of the intended arc, not the end.<br>
-    — Make <strong>progressive passes</strong> on long arcs — multiple lighter passes give a smoother, more consistent curve than one aggressive bend.<br>
-    — Check your <strong>die/pin clearance</strong> before starting — the pin diameter affects the actual inner radius.<br>
+    <p>— <strong>Mark your bar</strong> from the bend start point, not the end of the bar.<br>
+    — <strong>Feed consistently</strong> — varying speed mid-bend can cause uneven curvature. Aim for a steady, smooth feed.<br>
+    — Check your <strong>die/pin clearance</strong> before starting — the pin diameter affects the actual inside radius.<br>
     — <strong>Deburr and clean</strong> bar ends before loading to avoid scoring the die.<br>
-    — For stainless or hardened steel, expect significantly more springback and consider annealing before bending.</p>
+    — For stainless or high-tensile steel, expect significantly more springback. Do a test bend on scrap first and note the offset.</p>
+  </div>
+
+  <div class="tip">
+    <h3>Bend Allowance — the bar stretches slightly</h3>
+    <p>When a bar bends, the <strong>neutral axis</strong> (which neither stretches nor compresses) sits roughly <strong>45–50% of the bar diameter</strong> from the inner face. For most practical CER40 work this effect is small and handled by good technique — calculate your arc length at the centreline radius and trim to fit if precision is critical. For tight bends on thick bar, you may need to add a small allowance (roughly 0.5× bar diameter per 90°).</p>
+  </div>
+
+  <div class="tip">
+    <h3>Minimum Bend Radius</h3>
+    <p>Bending too tight will crack the outer surface of the bar. As a practical guide:<br>
+    — <strong>Up to 12mm bar:</strong> minimum radius ≈ 2× bar diameter<br>
+    — <strong>16–25mm bar:</strong> minimum radius ≈ 3–4× bar diameter<br>
+    — <strong>25mm+ bar:</strong> minimum radius ≈ 4–6× bar diameter<br>
+    The CER40's die set sets an additional hard limit — the die bore determines the tightest radius achievable for each bar size. Always check the die spec before setting up.</p>
   </div>
 </div>
 
@@ -412,28 +404,10 @@ const CIRC_IDS = ['c-r','c-c','c-raw','c-sp'];
 let circUserSet = new Set();
 
 function circInput(id) {
-  if(id==='c-bd' || id==='c-bc') {        // bar Ø & bar circumference: guidance only, mutually linked
-    syncBar(id);
-    solveCircle();                        // refresh recommended-overlap legend
-    return;
-  }
+  if(id==='c-bd') { solveCircle(); return; } // bar Ø is guidance only, not a solver input
   const v=parseFloat(document.getElementById(id).value);
   if(!isNaN(v)) circUserSet.add(id); else circUserSet.delete(id);
   solveCircle();
-}
-
-// Bar diameter and bar circumference are inverses: barCirc = π × barØ
-function syncBar(id) {
-  const bd=document.getElementById('c-bd'), bc=document.getElementById('c-bc');
-  if(id==='c-bd') {
-    const v=parseFloat(bd.value);
-    if(!isNaN(v)&&v>0){ bc.value=f(π*v); bc.classList.add('solved'); }
-    else { bc.value=''; bc.classList.remove('solved'); }
-  } else {
-    const v=parseFloat(bc.value);
-    if(!isNaN(v)&&v>0){ bd.value=f(v/π); bd.classList.add('solved'); }
-    else { bd.value=''; bd.classList.remove('solved'); }
-  }
 }
 
 function solveCircle() {
@@ -478,7 +452,7 @@ function setCircField(id, val) {
 
 function clearCircle() {
   circUserSet.clear();
-  ['c-r','c-c','c-raw','c-sp','c-bd','c-bc'].forEach(id=>{
+  ['c-r','c-c','c-raw','c-sp','c-bd'].forEach(id=>{
     const e=document.getElementById(id);
     e.value=''; e.classList.remove('solved');
   });
@@ -520,7 +494,7 @@ function drawCircleSVG(r, info) {
   }
 
   const bd=parseFloat(document.getElementById('c-bd').value)||0;
-  const bc=parseFloat(document.getElementById('c-bc').value)||0;
+  const bc=bd>0 ? π*bd : 0;   // bar circumference = π × bar Ø (shown in legend only)
   const recSplice = bd>0 ? bd*1.5 : null;
 
   const items=[
@@ -545,7 +519,7 @@ function drawCircleSVG(r, info) {
 // ═══════════════════════════════════════
 //  ARC
 // ═══════════════════════════════════════
-const ARC_IDS = ['a-r','a-a','a-l','a-ch','a-ri'];
+const ARC_IDS = ['a-r','a-l','a-ch','a-ri']; // angle is display-only, not an input
 let arcUserSet = new Set();
 
 function arcInput(id) {
@@ -595,6 +569,7 @@ function solveArc() {
 function setArcField(id, val) {
   if(arcUserSet.has(id)) return;
   const e=document.getElementById(id);
+  if(!e) return; // angle has no input field — display-only in legend/diagram
   e.value=f(val);
   e.classList.add('solved');
 }
@@ -768,19 +743,22 @@ function drawSim(progress, p) {
   // the exit curve large, so it reads as the gradual sweep the bar really makes.
   const tailCap=Math.max(R*0.55, RZONE*3);
 
+  // The bend forms AT the bending roller (x = 0). The bar is straight up to
+  // there, then sweeps round on a constant radius — exactly how it feeds through
+  // and curls away. The leading tip travels along the circle as more bar feeds.
   const pts=[];
   const tailMax=Math.min(p.arcLen + tail, tailCap + tail); // feed tail at 0% (longest)
-  pts.push([-(RZONE + tailMax), 0]);
-  pts.push([-RZONE,0]); pts.push([RZONE,0]);
-  pts.push([RZONE + lead, 0]);                          // leading leg pointing right at 0%
+  pts.push([-tailMax, 0]);                              // straight feed extends left
+  pts.push([0,0]);
+  pts.push([lead, 0]);                                  // leading leg at 0%
   for(let i=0;i<=48;i++){                               // exit arc curves DOWNWARD (positive y)
     const a=(i/48)*Math.min(targetRad,2*π);
-    pts.push([RZONE + R*Math.sin(a), +(R*(1-Math.cos(a)))]);
+    pts.push([R*Math.sin(a), +(R*(1-Math.cos(a)))]);
   }
-  const tipx=RZONE + R*Math.sin(targetRad) + lead*Math.cos(targetRad);
+  const tipx=R*Math.sin(targetRad) + lead*Math.cos(targetRad);
   const tipy=+(R*(1-Math.cos(targetRad))) + lead*Math.sin(targetRad);
   pts.push([tipx, tipy]);
-  pts.push([0, -RZONE*0.6]);                            // headroom above bar for feed rollers
+  pts.push([-RZONE*1.6, -RZONE]);                       // headroom for feed rollers (upper-left)
 
   const xs=pts.map(q=>q[0]), ys=pts.map(q=>q[1]);
   const minX=Math.min(...xs), maxX=Math.max(...xs);
@@ -801,42 +779,44 @@ function drawSim(progress, p) {
   svg.appendChild(g);
 
   // ── Rollers ──
-  const backY=-(sRR+sBD/2+1);   // feed rollers (above bar = negative y)
-  const bendY=+(sRR+sBD/2+1);   // bending roller (below bar, pushes down = positive y)
+  // Feed rollers straddle the entry point (left of bend); bending roller sits below at x=0
+  const backY=-(sRR+sBD/2+1);   // feed rollers above bar (negative y)
+  const bendY=+(sRR+sBD/2+1);   // bending roller below bar (positive y)
   function drawRoller(cx,cy,r,stroke){
     g.appendChild(el('circle',{cx,cy,r,fill:'#36384a',stroke,'stroke-width':1.5}));
     g.appendChild(el('circle',{cx,cy,r:r*0.38,fill:'#50526a',opacity:.6}));
     g.appendChild(el('circle',{cx,cy,r:1.5,fill:'#888'}));
   }
-  drawRoller(-sZone*0.42, backY, sRR, '#6a8caf');
-  drawRoller(+sZone*0.42, backY, sRR, '#6a8caf');
-  drawRoller(0, bendY, sRR, '#e94560');
+  drawRoller(-sZone*0.55, backY, sRR, '#6a8caf');  // left feed roller
+  drawRoller(-sZone*0.05, backY, sRR, '#6a8caf');  // right feed roller (just left of bend)
+  drawRoller(0, bendY, sRR, '#e94560');              // bending roller AT the bend origin
 
   // ── Bar path ──
-  // Exit arc curves DOWNWARD: centre at (sZone, +sR); sweep=0 (CCW in SVG = downward)
-  const curAex=sZone + sR*Math.sin(curRadC);
-  const curAey=+(sR*(1-Math.cos(curRadC)));             // positive = downward on screen
+  // Arc begins at (0, 0) — the bending roller contact point — and sweeps downward.
+  // Centre of curvature is at (0, +sR). sweep=0 (CCW in SVG = curves right-then-down).
+  const curAex=sR*Math.sin(curRadC);
+  const curAey=+(sR*(1-Math.cos(curRadC)));         // positive = downward on screen
   const la=curRadC>π?1:0;
   // Tangent at arc end: (cos θ, +sin θ)
   const leadEx=curAex + sLead*Math.cos(curRadC);
   const leadEy=curAey + sLead*Math.sin(curRadC);
 
-  // Feed tail (left): remaining unbent arc + trailing leg, capped
+  // Feed tail (left of bend origin): remaining unbent bar, capped for visual clarity
   const tailMm=Math.min((1-progress)*p.arcLen + tail, tailCap + tail);
-  const tailEndX=-sZone - tailMm*sc;
+  const tailEndX= -tailMm*sc;
 
-  // Build path segments
+  // Build path: tail stub → through roller zone → exit arc (+ optional lead leg)
   let exitSeg;
   if(progress>0.005){
     exitSeg = curAngleDeg<0.3
-      ? `M ${sZone} 0 L ${curAex} ${curAey}`
-      : `M ${sZone} 0 A ${sR} ${sR} 0 ${la} 0 ${curAex} ${curAey}`;
+      ? `M 0 0 L ${curAex} ${curAey}`
+      : `M 0 0 A ${sR} ${sR} 0 ${la} 0 ${curAex} ${curAey}`;
     if(sLead>0) exitSeg += ` L ${leadEx} ${leadEy}`;
   } else {
-    exitSeg = `M ${sZone} 0 L ${sZone+sLead} 0`; // straight, ready to bend
+    exitSeg = `M 0 0 L ${sLead} 0`; // straight, ready to bend
   }
-  const throughSeg=`M ${-sZone} 0 L ${sZone} 0`;
-  const tailSeg=`M ${-sZone} 0 L ${tailEndX} 0`;
+  const throughSeg=`M ${-sZone*0.8} 0 L 0 0`;
+  const tailSeg=`M ${-sZone*0.8} 0 L ${tailEndX} 0`;
   const allPath=[tailSeg,throughSeg,exitSeg].join(' ');
 
   // Draw: glow → body → highlight
@@ -844,25 +824,24 @@ function drawSim(progress, p) {
   g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a9098','stroke-width':sBD,'stroke-linecap':'round','stroke-linejoin':'round'}));
   g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#c8d2e0','stroke-width':sBD*0.2,'stroke-linecap':'round','stroke-linejoin':'round',opacity:.6}));
 
-  // Feed direction arrow on the tail (points right, into the rollers)
-  const arrX=-sZone - Math.min(tailMm*sc*0.5, 44);
+  // Feed direction arrow on the tail
+  const arrX=Math.min(tailEndX*0.5, -sZone - 10);
   txt(g, arrX, -sBD-5, 'feed →', '#56586a', 'middle', 8);
-  g.appendChild(el('path',{d:`M ${-sZone-9} -3 L ${-sZone} 0 L ${-sZone-9} 3`,fill:'none',stroke:'#56586a','stroke-width':1}));
+  g.appendChild(el('path',{d:`M ${-sZone*0.8-9} -3 L ${-sZone*0.8} 0 L ${-sZone*0.8-9} 3`,fill:'none',stroke:'#56586a','stroke-width':1}));
 
-  // Current angle label on the convex side of the arc
+  // Angle label — above the arc on the concave (inner) side
   if(curAngleDeg>2){
     const ma=curRadC/2;
     const lblR=sR + sBD + 14;
-    // label on the concave (inner/upper) face of the downward arc
-    txt(g, sZone + lblR*Math.sin(ma), +(sR - lblR*Math.cos(ma)), `${f(curAngleDeg)}°`, '#f5a623', 'middle', 10);
+    txt(g, sR*Math.sin(ma) + lblR*0.15, +(sR - lblR*Math.cos(ma)), `${f(curAngleDeg)}°`, '#f5a623', 'middle', 10);
   }
 
   // End markers
   const dotR=Math.max(3,sBD*0.5);
-  const tipX=(progress>0.005) ? (sLead>0?leadEx:curAex) : (sZone+sLead);
+  const tipX=(progress>0.005) ? (sLead>0?leadEx:curAex) : sLead;
   const tipY=(progress>0.005) ? (sLead>0?leadEy:curAey) : 0;
-  g.appendChild(el('circle',{cx:tipX,cy:tipY,r:dotR,fill:'#4caf50',opacity:.9}));   // leading tip (out first)
-  g.appendChild(el('circle',{cx:tailEndX,cy:0,r:dotR,fill:'#e94560',opacity:.9})); // trailing tail (feeding)
+  g.appendChild(el('circle',{cx:tipX,cy:tipY,r:dotR,fill:'#4caf50',opacity:.9}));   // leading tip
+  g.appendChild(el('circle',{cx:tailEndX,cy:0,r:dotR,fill:'#e94560',opacity:.9})); // trailing tail
 }
 
 function animateSim() {
