@@ -531,10 +531,12 @@ function arcInput(id) {
 
 function solveArc() {
   const get = id => {
-    const v=parseFloat(document.getElementById(id).value);
+    const e=document.getElementById(id);
+    if(!e) return null;                    // field may not exist (angle is display-only)
+    const v=parseFloat(e.value);
     return arcUserSet.has(id)&&v>0 ? v : null;
   };
-  let r=get('a-r'), a=get('a-a'), l=get('a-l'), ch=get('a-ch'), ri=get('a-ri');
+  let r=get('a-r'), a=null, l=get('a-l'), ch=get('a-ch'), ri=get('a-ri');
 
   // Derive r from pairs that don't need it
   if(ch!=null&&ri!=null&&r==null) r=(ch*ch/4+ri*ri)/(2*ri);
@@ -772,7 +774,7 @@ function drawSim(progress, p) {
 
   const sR=R*sc, sLead=lead*sc, sZone=RZONE*sc;
   const sBD=Math.max(3,Math.min(15,BD*sc*0.6));
-  const sRR=Math.max(9,Math.min(22,sZone*0.42));
+  const sRR=Math.max(6,Math.min(14,sZone*0.24)); // kept small so rollers don't overlap
 
   const cxMid=((minX+maxX)/2)*sc, cyMid=((minY+maxY)/2)*sc;
   const g=el('g',{transform:`translate(${-cxMid} ${-cyMid})`});
@@ -787,9 +789,9 @@ function drawSim(progress, p) {
     g.appendChild(el('circle',{cx,cy,r:r*0.38,fill:'#50526a',opacity:.6}));
     g.appendChild(el('circle',{cx,cy,r:1.5,fill:'#888'}));
   }
-  drawRoller(-sZone*0.55, backY, sRR, '#6a8caf');  // left feed roller
-  drawRoller(-sZone*0.05, backY, sRR, '#6a8caf');  // right feed roller (just left of bend)
-  drawRoller(0, bendY, sRR, '#e94560');              // bending roller AT the bend origin
+  drawRoller(-sZone*1.0, backY, sRR, '#6a8caf');  // left feed roller (back)
+  drawRoller(-sZone*0.15, backY, sRR, '#6a8caf'); // right feed roller (front, near bend)
+  drawRoller(0, bendY, sRR, '#e94560');             // bending roller at bend origin
 
   // ── Bar path ──
   // Arc begins at (0,0) and sweeps CW (sweep=1): exits RIGHT, curves gradually DOWN.
