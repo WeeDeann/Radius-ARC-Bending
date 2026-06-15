@@ -216,9 +216,8 @@ nav button:hover{color:var(--text)}
 <div id="arc" class="tab">
   <div class="card">
     <div class="card-title">Arc Calculator</div>
-    <p class="hint">Enter any <strong style="color:#fff">two</strong> values — all others solve automatically. Angle is a calculated output shown in the diagram.<br>
-    <em>Radius is to the bar centreline. Inside radius = this value − half bar Ø.</em><br>
-    Tip: <strong style="color:#fff">Chord + Rise</strong> is ideal when measuring an existing arch or template.</p>
+    <p class="hint">Enter <strong style="color:#fff">Radius + any one other value</strong>, or <strong style="color:#fff">Chord + Rise</strong> together — all remaining values solve automatically. Angle is a calculated output.<br>
+    <em>Radius is to the bar centreline. Inside radius = this value − half bar Ø.</em></p>
     <div class="grid">
       <div class="field">
         <label>Radius (mm)</label>
@@ -394,7 +393,7 @@ function showTab(id, btn) {
   document.getElementById(id).classList.add('active');
   btn.classList.add('active');
   if (id==='sim') renderSim();
-  if (id==='arc') drawArcDiagram();
+  if (id==='arc') solveArc();
 }
 
 // ═══════════════════════════════════════
@@ -580,6 +579,7 @@ function clearArc() {
   arcUserSet.clear();
   ARC_IDS.forEach(id=>{
     const e=document.getElementById(id);
+    if(!e) return;
     e.value=''; e.classList.remove('solved');
   });
   drawArcDiagram(null,null,null,null,null);
