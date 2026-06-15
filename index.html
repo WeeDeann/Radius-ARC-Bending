@@ -387,6 +387,30 @@ function legend(id, items) {
   ).join('');
 }
 
+// ── Scale reference (map-style ruler) ──────────────────────────────
+// Diagrams auto-fit to the view, so a 200mm ring and a 2000mm ring look the
+// same size. A scale bar lets the operator judge the real size of the result.
+function niceScale(pxPerMm, targetPx){
+  if(!(pxPerMm>0)) return {mm:0,px:0};
+  const rawMm=targetPx/pxPerMm;
+  const pow=Math.pow(10,Math.floor(Math.log10(rawMm)));
+  const norm=rawMm/pow;
+  const nice = norm<1.5?1 : norm<3.5?2 : norm<7.5?5 : 10;
+  const mm=nice*pow;
+  return {mm, px:mm*pxPerMm};
+}
+function mmLabel(mm){
+  return mm>=1000 ? (Math.round(mm/100)/10)+' m' : Math.round(mm)+' mm';
+}
+function drawScaleBar(svg, pxPerMm, x, y, targetPx=110, color='#7a8194'){
+  const {mm,px}=niceScale(pxPerMm,targetPx);
+  if(!(px>0)) return;
+  svg.appendChild(el('line',{x1:x,y1:y,x2:x+px,y2:y,stroke:color,'stroke-width':2}));
+  svg.appendChild(el('line',{x1:x,y1:y-4,x2:x,y2:y+4,stroke:color,'stroke-width':2}));
+  svg.appendChild(el('line',{x1:x+px,y1:y-4,x2:x+px,y2:y+4,stroke:color,'stroke-width':2}));
+  txt(svg, x+px/2, y-7, mmLabel(mm), color, 'middle', 9);
+}
+
 function showTab(id, btn) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
@@ -512,6 +536,8 @@ function drawCircleSVG(r, info) {
     items.push({color:'#f5a623', name:'Recommended overlap', value:`≈ ${f(recSplice)} mm (1.5× bar Ø)`});
     if(raw==null) items.push({color:'#f5a623', name:'Suggested raw length', value:`${f(circ+recSplice)} mm`});
   }
+  // Scale ruler — the schematic circle is fixed-size, so show its true scale
+  drawScaleBar(svg, dispR/r, -130, 100, 80);
   legend('circle-legend', items);
 }
 
@@ -654,6 +680,9 @@ function drawArcDiagram(r, angleDeg, arcLen, chord, rise) {
   txt(svg,cx,py-8,'arc','#f5a623','middle',9);
   txt(svg,cx,cy+14,`${f(angleDeg)}°`,'#888','middle',9);
 
+  // Scale ruler (bottom-left) so the real size of the arc is readable
+  drawScaleBar(svg, sc, 14, 250, 90);
+
   legend('arc-legend',[
     {color:'#888',    name:'Radius',     value:`${f(r)} mm`},
     {color:'#aaa',    name:'Angle',      value:`${f(angleDeg)}°`},
@@ -681,6 +710,17 @@ function simParams() {
   return {BL,R,BD,lead,tail,arcLen,angleDeg};
 }
 
+// Bounding size (mm) of the finished bent bar — what it measures once formed.
+function simShapeSize(p){
+  const ang=p.angleDeg*π/180, R=p.R, lead=p.lead, tail=p.tail;
+  const xs=[-tail,0], ys=[0,0];
+  const m=Math.min(ang,2*π);
+  for(let i=0;i<=64;i++){const t=(i/64)*m; xs.push(R*Math.sin(t)); ys.push(R*(1-Math.cos(t)));}
+  xs.push(R*Math.sin(ang)+lead*Math.cos(ang));
+  ys.push(R*(1-Math.cos(ang))+lead*Math.sin(ang));
+  return {w:Math.max(...xs)-Math.min(...xs), h:Math.max(...ys)-Math.min(...ys)};
+}
+
 function calcSimInputs() {
   const p=simParams();
   const el2=document.getElementById('sim-calcs');
@@ -698,9 +738,18 @@ function calcSimInputs() {
         extra=`<div class="stat-box"><div class="s-label">Short of full ring</div><div class="s-val">${f(-diff)} mm</div></div>`;
       extra=`<div class="stat-box"><div class="s-label">Full ring length</div><div class="s-val">${f(circ)} mm</div></div>`+extra;
     }
+    // Finished size — diameter for a full ring, otherwise overall W×H footprint
+    let sizeStat;
+    if(p.angleDeg>=358){
+      sizeStat=`<div class="stat-box" style="border-color:#4fa3e0"><div class="s-label" style="color:#4fa3e0">Outer diameter</div><div class="s-val">${f(2*p.R)} mm</div></div>`;
+    } else {
+      const s=simShapeSize(p);
+      sizeStat=`<div class="stat-box" style="border-color:#4fa3e0"><div class="s-label" style="color:#4fa3e0">Overall size (W×H)</div><div class="s-val" style="font-size:.92rem">${f(s.w)} × ${f(s.h)} mm</div></div>`;
+    }
     el2.innerHTML=`
       <div class="stat-box"><div class="s-label">Arc Length</div><div class="s-val">${f(p.arcLen)} mm</div></div>
       <div class="stat-box"><div class="s-label">Bend Angle</div><div class="s-val">${f(p.angleDeg)}°</div></div>
+      ${sizeStat}
       ${extra}
     `;
   } else {
@@ -789,9 +838,10 @@ function drawSim(progress, p) {
     g.appendChild(el('circle',{cx,cy,r:r*0.38,fill:'#50526a',opacity:.6}));
     g.appendChild(el('circle',{cx,cy,r:1.5,fill:'#888'}));
   }
-  drawRoller(-sZone*1.0, backY, sRR, '#6a8caf');  // left feed roller (back)
-  drawRoller(-sZone*0.15, backY, sRR, '#6a8caf'); // right feed roller (front, near bend)
-  drawRoller(0, bendY, sRR, '#e94560');             // bending roller at bend origin
+  const drvX=Math.max(sZone*0.6, sRR*1.8);          // drive wheels straddle the bend point
+  drawRoller(-drvX, backY, sRR, '#6a8caf');         // left drive wheel
+  drawRoller(+drvX, backY, sRR, '#6a8caf');         // right drive wheel
+  drawRoller(0, bendY, sRR, '#e94560');             // bending pin — centred between the drive wheels
 
   // ── Bar path ──
   // Arc begins at (0,0) and sweeps CW (sweep=1): exits RIGHT, curves gradually DOWN.
@@ -846,6 +896,9 @@ function drawSim(progress, p) {
   const tipY=(progress>0.005) ? (sLead>0?leadEy:curAey) : 0;
   g.appendChild(el('circle',{cx:tipX,cy:tipY,r:dotR,fill:'#4caf50',opacity:.9}));   // leading tip
   g.appendChild(el('circle',{cx:tailEndX,cy:0,r:dotR,fill:'#e94560',opacity:.9})); // trailing tail
+
+  // Scale ruler (fixed in the bottom-left corner, true to the current zoom)
+  drawScaleBar(svg, sc, -232, 158, 130);
 }
 
 function animateSim() {
