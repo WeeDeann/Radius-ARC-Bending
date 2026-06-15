@@ -792,12 +792,11 @@ function drawSim(progress, p) {
   drawRoller(0, bendY, sRR, '#e94560');              // bending roller AT the bend origin
 
   // ── Bar path ──
-  // Arc begins at (0, 0) — the bending roller contact point — and sweeps downward.
-  // Centre of curvature is at (0, +sR). sweep=0 (CCW in SVG = curves right-then-down).
+  // Arc begins at (0,0) and sweeps CW (sweep=1): exits RIGHT, curves gradually DOWN.
+  // Centre of curvature sits directly below at (0, +sR).
   const curAex=sR*Math.sin(curRadC);
-  const curAey=+(sR*(1-Math.cos(curRadC)));         // positive = downward on screen
+  const curAey=+(sR*(1-Math.cos(curRadC)));
   const la=curRadC>π?1:0;
-  // Tangent at arc end: (cos θ, +sin θ)
   const leadEx=curAex + sLead*Math.cos(curRadC);
   const leadEy=curAey + sLead*Math.sin(curRadC);
 
@@ -810,7 +809,7 @@ function drawSim(progress, p) {
   if(progress>0.005){
     exitSeg = curAngleDeg<0.3
       ? `M 0 0 L ${curAex} ${curAey}`
-      : `M 0 0 A ${sR} ${sR} 0 ${la} 0 ${curAex} ${curAey}`;
+      : `M 0 0 A ${sR} ${sR} 0 ${la} 1 ${curAex} ${curAey}`;
     if(sLead>0) exitSeg += ` L ${leadEx} ${leadEy}`;
   } else {
     exitSeg = `M 0 0 L ${sLead} 0`; // straight, ready to bend
@@ -829,11 +828,14 @@ function drawSim(progress, p) {
   txt(g, arrX, -sBD-5, 'feed →', '#56586a', 'middle', 8);
   g.appendChild(el('path',{d:`M ${-sZone*0.8-9} -3 L ${-sZone*0.8} 0 L ${-sZone*0.8-9} 3`,fill:'none',stroke:'#56586a','stroke-width':1}));
 
-  // Angle label — above the arc on the concave (inner) side
+  // Angle label — inside the bend (concave side = above/left of the CW arc)
   if(curAngleDeg>2){
     const ma=curRadC/2;
-    const lblR=sR + sBD + 14;
-    txt(g, sR*Math.sin(ma) + lblR*0.15, +(sR - lblR*Math.cos(ma)), `${f(curAngleDeg)}°`, '#f5a623', 'middle', 10);
+    // Midpoint of arc; concave inward direction is (-sin(ma), cos(ma)) → upper-left
+    const offset=sBD+16;
+    const lx=sR*Math.sin(ma) - offset*Math.sin(ma);
+    const ly=sR*(1-Math.cos(ma)) + offset*Math.cos(ma);
+    txt(g, lx, ly, `${f(curAngleDeg)}°`, '#f5a623', 'middle', 10);
   }
 
   // End markers
