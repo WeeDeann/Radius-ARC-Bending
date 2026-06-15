@@ -285,7 +285,7 @@ nav button:hover{color:var(--text)}
     <div class="card-title">Live View (top-down)</div>
     <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem">
       <span style="font-size:.75rem;color:var(--muted);min-width:38px">Zoom</span>
-      <input type="range" id="sim-zoom" min="10" max="300" value="100" style="flex:1;accent-color:var(--accent);height:6px" oninput="onSimZoom()">
+      <input type="range" id="sim-zoom" min="5" max="400" value="100" style="flex:1;accent-color:var(--accent);height:6px" oninput="onSimZoom()">
       <span style="color:var(--gold);font-weight:700;min-width:44px;text-align:right;font-size:.95rem" id="sim-zoom-pct">100%</span>
     </div>
     <div class="diagram" style="min-height:300px;background:#080a0f">
@@ -384,7 +384,7 @@ function legend(id, items) {
   ).join('');
 }
 
-// ── Scale reference (map-style ruler) ──────────────────────────────
+// ── Scale reference (map-style ruler) ──────────────────────────────────
 // Diagrams auto-fit to the view, so a 200mm ring and a 2000mm ring look the
 // same size. A scale bar lets the operator judge the real size of the result.
 function niceScale(pxPerMm, targetPx){
@@ -406,6 +406,46 @@ function drawScaleBar(svg, pxPerMm, x, y, targetPx=110, color='#7a8194'){
   svg.appendChild(el('line',{x1:x,y1:y-4,x2:x,y2:y+4,stroke:color,'stroke-width':2}));
   svg.appendChild(el('line',{x1:x+px,y1:y-4,x2:x+px,y2:y+4,stroke:color,'stroke-width':2}));
   txt(svg, x+px/2, y-7, mmLabel(mm), color, 'middle', 9);
+}
+
+// Full-width ruler calibrated to current zoom — shows real mm/m scale
+function drawRuler(svg, barSc, bendSvgX, y) {
+  if(!(barSc > 0)) return;
+  const visibleMm = 490 / barSc;
+  const rawMaj = visibleMm / 6;
+  const pow = Math.pow(10, Math.floor(Math.log10(rawMaj)));
+  const n = rawMaj / pow;
+  const majMm = n<1.5 ? pow : n<3.5 ? 2*pow : n<7.5 ? 5*pow : 10*pow;
+  const minMm = majMm / 5;
+
+  svg.appendChild(el('line',{x1:-248,y1:y,x2:248,y2:y,stroke:'#252840','stroke-width':1}));
+
+  const leftMm  = (-248 - bendSvgX) / barSc;
+  const rightMm = ( 248 - bendSvgX) / barSc;
+  const firstIdx = Math.floor(leftMm / minMm);
+  const lastIdx  = Math.ceil(rightMm / minMm);
+
+  for(let idx = firstIdx; idx <= lastIdx; idx++) {
+    const mm = idx * minMm;
+    const svgX = bendSvgX + mm * barSc;
+    if(svgX < -248 || svgX > 248) continue;
+    const isMaj = idx % 5 === 0;
+    if(isMaj) {
+      svg.appendChild(el('line',{x1:svgX,y1:y,x2:svgX,y2:y-9,stroke:'#50536e','stroke-width':1.5}));
+      const absV = Math.abs(Math.round(mm));
+      const neg = mm < -0.5;
+      let lbl;
+      if(absV === 0)        lbl = '0';
+      else if(absV >= 1000) lbl = (neg?'−':'') + (absV/1000).toFixed(absV % 1000 === 0 ? 0 : 1) + 'm';
+      else                  lbl = (neg?'−':'') + absV;
+      txt(svg, svgX, y+11, lbl, '#50536e', 'middle', 8);
+    } else {
+      svg.appendChild(el('line',{x1:svgX,y1:y,x2:svgX,y2:y-4,stroke:'#252840','stroke-width':1}));
+    }
+  }
+  // Red marker at bending origin (0 mm)
+  if(bendSvgX >= -248 && bendSvgX <= 248)
+    svg.appendChild(el('line',{x1:bendSvgX,y1:y-1,x2:bendSvgX,y2:y-14,stroke:'#e94560','stroke-width':1.5}));
 }
 
 function showTab(id, btn) {
@@ -784,18 +824,18 @@ function drawSim(progress, p) {
   const RZONE=Math.max(R*0.13, 45);
   const tailCap=Math.max(R*0.55, RZONE*3);
   const pts=[];
-  const tailMax=Math.min(p.arcLen + tail, tailCap + tail); // feed tail at 0% (longest)
-  pts.push([-tailMax, 0]);                              // straight feed extends left
+  const tailMax=Math.min(p.arcLen + tail, tailCap + tail);
+  pts.push([-tailMax, 0]);
   pts.push([0,0]);
-  pts.push([lead, 0]);                                  // leading leg at 0%
-  for(let i=0;i<=48;i++){                               // exit arc curves DOWNWARD (positive y)
+  pts.push([lead, 0]);
+  for(let i=0;i<=48;i++){
     const a=(i/48)*Math.min(targetRad,2*π);
     pts.push([R*Math.sin(a), +(R*(1-Math.cos(a)))]);
   }
   const tipx=R*Math.sin(targetRad) + lead*Math.cos(targetRad);
   const tipy=+(R*(1-Math.cos(targetRad))) + lead*Math.sin(targetRad);
   pts.push([tipx, tipy]);
-  pts.push([-RZONE*1.6, -RZONE]);  // headroom above bending point for machine rollers
+  pts.push([-RZONE*1.6, -RZONE]);
 
   const xs=pts.map(q=>q[0]), ys=pts.map(q=>q[1]);
   const minX=Math.min(...xs), maxX=Math.max(...xs);
@@ -803,40 +843,41 @@ function drawSim(progress, p) {
   const pad=Math.max(R*0.1, RZONE*0.6);
   const shapeW=maxX-minX+2*pad, shapeH=maxY-minY+2*pad;
 
-  // Auto-fit scale: fits the bar into the 500×350 viewBox at 100% zoom
   const autoFitSc=Math.min(460/shapeW, 320/shapeH);
-  // User zoom from slider (100 = auto-fit, lower = zoom out to see large bars)
   const zoomEl=document.getElementById('sim-zoom');
   const userZoom=(zoomEl ? parseInt(zoomEl.value)||100 : 100)/100;
   const barSc=autoFitSc*userZoom;
 
-  // Bar-scaled dimensions
   const sR=R*barSc, sZone=RZONE*barSc;
-  const sBD=Math.max(3,Math.min(12,BD*barSc*0.6));
+  const sBD=Math.max(4,Math.min(18,BD*barSc*0.85));
 
-  // Centre of bar bounding box in SVG coordinates (bending point = 0,0 in bar space)
   const cxMid=((minX+maxX)/2)*barSc, cyMid=((minY+maxY)/2)*barSc;
-  // Where the bending point (0,0) falls in SVG space after centering
   const bendSvgX=-cxMid, bendSvgY=-cyMid;
 
-  // ── Machine rollers — drawn in FIXED SVG pixels (independent of zoom) ──
-  // This keeps the machine visually consistent regardless of how large the bar is.
-  const MACH_RR=10;    // roller radius: always 10 px
-  const DRIVE_X=32;    // drive wheels: 32 px left/right of bending pin
-  const barHalf=Math.max(sBD,5)/2;
-  const machBackY=-(MACH_RR+barHalf+2);  // feed rollers above bar
-  const machBendY=+(MACH_RR+barHalf+2);  // bending roller below bar
+  const BEND_RR = 24;
+  const FEED_RR = 19;
+  const DRIVE_X = 58;
+  const SLOT_HALF = Math.max(sBD * 0.6, 9);
+  const machBackY = -(FEED_RR + SLOT_HALF);
+  const machBendY = +(BEND_RR + SLOT_HALF);
 
-  function drawRoller(cx,cy,r,stroke){
-    svg.appendChild(el('circle',{cx,cy,r,fill:'#36384a',stroke,'stroke-width':1.5}));
-    svg.appendChild(el('circle',{cx,cy,r:r*0.38,fill:'#50526a',opacity:.6}));
-    svg.appendChild(el('circle',{cx,cy,r:1.5,fill:'#888'}));
+  // 1. Machine housing plate
+  {
+    const px = bendSvgX - DRIVE_X - FEED_RR - 8;
+    const pw = (DRIVE_X + FEED_RR + 8) * 2;
+    const py = bendSvgY + machBackY - FEED_RR - 6;
+    const ph = (machBendY - machBackY) + (BEND_RR + FEED_RR) + 12;
+    svg.appendChild(el('rect',{x:px,y:py,width:pw,height:ph,
+      fill:'#13151f',stroke:'#20243a','stroke-width':2,rx:7}));
+    svg.appendChild(el('line',{x1:px+3,y1:py+3,x2:px+pw-3,y2:py+3,
+      stroke:'#2a2f4a','stroke-width':1,opacity:.7}));
+    const slotY = bendSvgY - SLOT_HALF;
+    const slotH = SLOT_HALF * 2;
+    svg.appendChild(el('rect',{x:px,y:slotY,width:pw,height:slotH,
+      fill:'#09090f',stroke:'none'}));
   }
-  drawRoller(bendSvgX-DRIVE_X, bendSvgY+machBackY, MACH_RR, '#6a8caf');  // left feed roller
-  drawRoller(bendSvgX+DRIVE_X, bendSvgY+machBackY, MACH_RR, '#6a8caf');  // right feed roller
-  drawRoller(bendSvgX,          bendSvgY+machBendY, MACH_RR, '#e94560'); // bending roller
 
-  // ── Bar path — drawn in a translated group, scaled by barSc ──
+  // 2. Bar path
   const g=el('g',{transform:`translate(${-cxMid} ${-cyMid})`});
   svg.appendChild(g);
 
@@ -853,36 +894,46 @@ function drawSim(progress, p) {
       ? `M 0 0 L ${curAex} ${curAey}`
       : `M 0 0 A ${sR} ${sR} 0 ${la} 1 ${curAex} ${curAey}`;
   } else {
-    exitSeg = `M 0 0 L 0 0`;
+    exitSeg=`M 0 0 L 0 0`;
   }
   const throughSeg=`M ${-sZone*0.8} 0 L 0 0`;
   const tailSeg=`M ${-sZone*0.8} 0 L ${tailEndX} 0`;
   const allPath=[tailSeg,throughSeg,exitSeg].join(' ');
 
-  g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a903322','stroke-width':sBD+10,'stroke-linecap':'round','stroke-linejoin':'round'}));
+  g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a903318','stroke-width':sBD+14,'stroke-linecap':'round','stroke-linejoin':'round'}));
   g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a9098','stroke-width':sBD,'stroke-linecap':'round','stroke-linejoin':'round'}));
-  g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#c8d2e0','stroke-width':sBD*0.2,'stroke-linecap':'round','stroke-linejoin':'round',opacity:.6}));
+  g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#c8d2e0','stroke-width':Math.max(1,sBD*0.18),'stroke-linecap':'round','stroke-linejoin':'round',opacity:.55}));
 
-  const arrX=Math.min(tailEndX*0.5, -sZone-10);
-  txt(g, arrX, -sBD-5, 'feed →', '#56586a', 'middle', 8);
-  g.appendChild(el('path',{d:`M ${-sZone*0.8-9} -3 L ${-sZone*0.8} 0 L ${-sZone*0.8-9} 3`,fill:'none',stroke:'#56586a','stroke-width':1}));
+  const arrX=Math.min(tailEndX*0.5,-sZone-10);
+  txt(g, arrX, -sBD-5, 'feed →', '#50536e', 'middle', 8);
+  g.appendChild(el('path',{d:`M ${-sZone*0.8-9} -3 L ${-sZone*0.8} 0 L ${-sZone*0.8-9} 3`,fill:'none',stroke:'#50536e','stroke-width':1}));
 
   if(curAngleDeg>2){
     const ma=curRadC/2;
-    const offset=sBD+16;
-    const lx=sR*Math.sin(ma)-offset*Math.sin(ma);
-    const ly=sR*(1-Math.cos(ma))+offset*Math.cos(ma);
-    txt(g, lx, ly, `${f(curAngleDeg)}°`, '#f5a623', 'middle', 10);
+    const offset=sBD+20;
+    txt(g, sR*Math.sin(ma)-offset*Math.sin(ma), sR*(1-Math.cos(ma))+offset*Math.cos(ma),
+        `${f(curAngleDeg)}°`, '#f5a623', 'middle', 11);
   }
 
-  const dotR=Math.max(3,sBD*0.5);
+  const dotR=Math.max(3.5,sBD*0.55);
   const tipX=progress>0.005 ? curAex : 0;
   const tipY=progress>0.005 ? curAey : 0;
-  g.appendChild(el('circle',{cx:tipX,cy:tipY,r:dotR,fill:'#4caf50',opacity:.9}));   // bar tip
-  g.appendChild(el('circle',{cx:tailEndX,cy:0,r:dotR,fill:'#e94560',opacity:.9})); // bar tail
+  g.appendChild(el('circle',{cx:tipX,cy:tipY,r:dotR,fill:'#4caf50',opacity:.9}));
+  g.appendChild(el('circle',{cx:tailEndX,cy:0,r:dotR,fill:'#e94560',opacity:.9}));
 
-  // Scale bar reflects current zoom — operator can read true mm size
-  drawScaleBar(svg, barSc, -232, 158, 130);
+  // 3. Rollers on top
+  function drawRoller(cx,cy,r,rimCol,hubCol){
+    svg.appendChild(el('circle',{cx,cy,r,fill:'#1e2133',stroke:rimCol,'stroke-width':2.5}));
+    svg.appendChild(el('circle',{cx,cy,r:r*0.72,fill:'none',stroke:rimCol,'stroke-width':1,opacity:.4}));
+    svg.appendChild(el('circle',{cx,cy,r:r*0.32,fill:hubCol,opacity:.7}));
+    svg.appendChild(el('circle',{cx,cy,r:2.5,fill:'#aaa'}));
+  }
+  drawRoller(bendSvgX-DRIVE_X, bendSvgY+machBackY, FEED_RR, '#5a80a8','#3a5068');
+  drawRoller(bendSvgX+DRIVE_X, bendSvgY+machBackY, FEED_RR, '#5a80a8','#3a5068');
+  drawRoller(bendSvgX,          bendSvgY+machBendY, BEND_RR, '#c44060','#7a2038');
+
+  // 4. Ruler
+  drawRuler(svg, barSc, bendSvgX, 160);
 }
 
 function animateSim() {
