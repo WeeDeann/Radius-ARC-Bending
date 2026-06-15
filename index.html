@@ -220,19 +220,19 @@ nav button:hover{color:var(--text)}
     <em>Radius is to the bar centreline. Inside radius = this value − half bar Ø.</em></p>
     <div class="grid">
       <div class="field">
-        <label>Radius (mm)</label>
+        <label><span class="dot" style="background:#4fa3e0"></span>Radius (mm)</label>
         <input type="number" id="a-r" placeholder="e.g. 600" oninput="arcInput('a-r')">
       </div>
       <div class="field">
-        <label>Arc Length (mm)</label>
+        <label><span class="dot" style="background:#f5a623"></span>Arc Length (mm)</label>
         <input type="number" id="a-l" placeholder="e.g. 942.5" oninput="arcInput('a-l')">
       </div>
       <div class="field">
-        <label>Chord Length (mm)</label>
+        <label><span class="dot" style="background:#e94560"></span>Chord Length (mm)</label>
         <input type="number" id="a-ch" placeholder="e.g. 848.5" oninput="arcInput('a-ch')">
       </div>
       <div class="field">
-        <label>Rise / Sagitta (mm)</label>
+        <label><span class="dot" style="background:#4caf50"></span>Rise / Sagitta (mm)</label>
         <input type="number" id="a-ri" placeholder="e.g. 175.7" oninput="arcInput('a-ri')">
       </div>
     </div>
@@ -256,7 +256,7 @@ nav button:hover{color:var(--text)}
     <p class="hint">Enter what you know — the bend angle is calculated from your bar length and radius, just like the machine works it out for you.</p>
     <div class="grid" style="margin-bottom:1rem">
       <div class="field">
-        <label>Total Bar Length (mm)</label>
+        <label>Raw Bar Length (mm)</label>
         <input type="number" id="sim-bl" placeholder="e.g. 2000" oninput="calcSimInputs()">
       </div>
       <div class="field">
@@ -266,14 +266,6 @@ nav button:hover{color:var(--text)}
       <div class="field">
         <label>Bar Diameter (mm)</label>
         <input type="number" id="sim-bd" value="16" oninput="calcSimInputs()">
-      </div>
-      <div class="field">
-        <label>Leading Leg (mm)</label>
-        <input type="number" id="sim-ll" placeholder="straight tip, 0 = none" oninput="calcSimInputs()">
-      </div>
-      <div class="field">
-        <label>Trailing Leg (mm)</label>
-        <input type="number" id="sim-rl" placeholder="straight tail, 0 = none" oninput="calcSimInputs()">
       </div>
     </div>
     <div class="stat-grid" id="sim-calcs" style="margin-bottom:1rem"></div>
@@ -291,6 +283,11 @@ nav button:hover{color:var(--text)}
   </div>
   <div class="card">
     <div class="card-title">Live View (top-down)</div>
+    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem">
+      <span style="font-size:.75rem;color:var(--muted);min-width:38px">Zoom</span>
+      <input type="range" id="sim-zoom" min="10" max="300" value="100" style="flex:1;accent-color:var(--accent);height:6px" oninput="onSimZoom()">
+      <span style="color:var(--gold);font-weight:700;min-width:44px;text-align:right;font-size:.95rem" id="sim-zoom-pct">100%</span>
+    </div>
     <div class="diagram" style="min-height:300px;background:#080a0f">
       <svg id="sim-svg" viewBox="-250 -175 500 350" style="width:100%;max-height:360px"></svg>
     </div>
@@ -326,7 +323,7 @@ nav button:hover{color:var(--text)}
 
   <div class="tip">
     <h3>Full Rings &amp; Circles</h3>
-    <p>For a complete ring, use the <strong>Circle Calculator</strong> to find your raw bar length (circumference + splice/overlap). Feed the bar in one continuous pass through the machine — the CER40 is a die-type bender and forms the ring progressively as the bar travels through, so a single consistent pass gives the best result. Overbend slightly to account for springback, then check roundness. Add <strong>1.5–2× bar diameter</strong> extra length for weld overlap.</p>
+    <p>For a complete ring, use the <strong>Circle Calculator</strong> to find your <strong>Raw Bar Length</strong> (circumference + splice/overlap). Feed the bar in one continuous pass through the machine — the CER40 is a die-type bender and forms the ring progressively as the bar travels through, so a single consistent pass gives the best result. Overbend slightly to account for springback, then check roundness. Add <strong>1.5–2× bar diameter</strong> extra length for weld overlap.</p>
   </div>
 
   <div class="tip">
@@ -525,7 +522,7 @@ function drawCircleSVG(r, info) {
     {color:'#4fa3e0', name:'Diameter',      value:`${f(r*2)} mm`},
     {color:'#2dd4bf', name:'Circumference', value:`${f(circ)} mm`},
   ];
-  if(raw!=null) items.push({color:'#aaa', name:'Raw bar length', value:`${f(raw)} mm`});
+  if(raw!=null) items.push({color:'#aaa', name:'Raw Bar Length', value:`${f(raw)} mm`});
   if(sp!=null){
     if(sp>=0) items.push({color:'#4caf50', name:'Splice / overlap', value:`${f(sp)} mm`});
     else      items.push({color:'#e94560', name:'Bar too short by', value:`${f(-sp)} mm`});
@@ -534,7 +531,7 @@ function drawCircleSVG(r, info) {
   if(bc>0) items.push({color:'#b07cf0', name:'Bar circumference', value:`${f(bc)} mm`});
   if(recSplice!=null){
     items.push({color:'#f5a623', name:'Recommended overlap', value:`≈ ${f(recSplice)} mm (1.5× bar Ø)`});
-    if(raw==null) items.push({color:'#f5a623', name:'Suggested raw length', value:`${f(circ+recSplice)} mm`});
+    if(raw==null) items.push({color:'#f5a623', name:'Suggested Raw Bar Length', value:`${f(circ+recSplice)} mm`});
   }
   // Scale ruler — the schematic circle is fixed-size, so show its true scale
   drawScaleBar(svg, dispR/r, -130, 100, 80);
@@ -678,17 +675,17 @@ function drawArcDiagram(r, angleDeg, arcLen, chord, rise) {
 
   // Minimal in-diagram markers only — full values go in the legend below
   txt(svg,cx,py-8,'arc','#f5a623','middle',9);
-  txt(svg,cx,cy+14,`${f(angleDeg)}°`,'#888','middle',9);
+  txt(svg,cx,cy+14,`${f(angleDeg)}°`,'#555','middle',8);
 
   // Scale ruler (bottom-left) so the real size of the arc is readable
   drawScaleBar(svg, sc, 14, 250, 90);
 
   legend('arc-legend',[
-    {color:'#888',    name:'Radius',     value:`${f(r)} mm`},
-    {color:'#aaa',    name:'Angle',      value:`${f(angleDeg)}°`},
+    {color:'#4fa3e0', name:'Radius',     value:`${f(r)} mm`},
     {color:'#f5a623', name:'Arc length', value:`${f(arcLen)} mm`},
     {color:'#e94560', name:'Chord',      value:`${f(chord)} mm`},
-    {color:'#4caf50', name:'Rise',       value:`${f(rise)} mm`}
+    {color:'#4caf50', name:'Rise',       value:`${f(rise)} mm`},
+    {color:'#555',    name:'Angle',      value:`${f(angleDeg)}°`}
   ]);
 }
 
@@ -703,9 +700,8 @@ function simParams() {
   const BL=parseFloat(document.getElementById('sim-bl').value)||0;
   const R =parseFloat(document.getElementById('sim-r').value)||0;
   const BD=parseFloat(document.getElementById('sim-bd').value)||16;
-  const lead=parseFloat(document.getElementById('sim-ll').value)||0; // straight tip (exit/right)
-  const tail=parseFloat(document.getElementById('sim-rl').value)||0; // straight tail (feed/left)
-  const arcLen=Math.max(0, BL-lead-tail);
+  const lead=0, tail=0;
+  const arcLen=BL;
   const angleDeg=R>0&&arcLen>0 ? arcLen/R*180/π : 0;
   return {BL,R,BD,lead,tail,arcLen,angleDeg};
 }
@@ -725,19 +721,14 @@ function calcSimInputs() {
   const p=simParams();
   const el2=document.getElementById('sim-calcs');
   if(p.BL>0&&p.R>0) {
-    let extra='';
-    if(p.BL<=p.lead+p.tail){
-      extra='<div class="stat-box" style="border-color:#e94560"><div class="s-label" style="color:#e94560">Warning</div><div class="s-val" style="color:#e94560;font-size:.85rem">Legs exceed bar length</div></div>';
-    } else if(p.lead===0 && p.tail===0){
-      // Ring mode: compare arc length to the full circumference for splice/overlap
-      const circ=2*π*p.R;
-      const diff=p.arcLen-circ;
-      if(diff>=0)
-        extra=`<div class="stat-box" style="border-color:#4caf50"><div class="s-label" style="color:#4caf50">Splice / overlap</div><div class="s-val" style="color:#4caf50">${f(diff)} mm</div></div>`;
-      else
-        extra=`<div class="stat-box"><div class="s-label">Short of full ring</div><div class="s-val">${f(-diff)} mm</div></div>`;
-      extra=`<div class="stat-box"><div class="s-label">Full ring length</div><div class="s-val">${f(circ)} mm</div></div>`+extra;
-    }
+    const circ=2*π*p.R;
+    const diff=p.arcLen-circ;
+    let extra;
+    if(diff>=0)
+      extra=`<div class="stat-box" style="border-color:#4caf50"><div class="s-label" style="color:#4caf50">Splice / overlap</div><div class="s-val" style="color:#4caf50">${f(diff)} mm</div></div>`;
+    else
+      extra=`<div class="stat-box"><div class="s-label">Short of full ring</div><div class="s-val">${f(-diff)} mm</div></div>`;
+    extra=`<div class="stat-box"><div class="s-label">Full ring length</div><div class="s-val">${f(circ)} mm</div></div>`+extra;
     // Finished size — diameter for a full ring, otherwise overall W×H footprint
     let sizeStat;
     if(p.angleDeg>=358){
@@ -765,38 +756,33 @@ function onSimSlider() {
   drawSim(pct/100, simParams());
 }
 
+function onSimZoom() {
+  const v=parseInt(document.getElementById('sim-zoom').value)||100;
+  document.getElementById('sim-zoom-pct').textContent=`${v}%`;
+  const pct=parseInt(document.getElementById('sim-sl').value)||0;
+  drawSim(pct/100, simParams());
+}
+
 function drawSim(progress, p) {
   const svg=document.getElementById('sim-svg');
   svg.innerHTML='';
-  svg.setAttribute('viewBox','-250 -175 500 350'); // FIXED — content is scaled & centred into it
+  svg.setAttribute('viewBox','-250 -175 500 350');
 
   if(!p.BL||!p.R||p.arcLen<=0) {
     const t=el('text',{x:0,y:8,'text-anchor':'middle',fill:'#333','font-size':13});
-    t.textContent=p.BL&&p.R?'Legs exceed bar length':'Enter bar length and radius above';
+    t.textContent='Enter bar length and radius above';
     svg.appendChild(t);
     return;
   }
 
-  // ── Top-down view of the roller table ──
-  // Bar feeds LEFT → RIGHT through the rollers and exits curving to the RIGHT.
-  // Two fixed feed rollers (top of view) + one adjustable bending roller (bottom).
   const R=p.R, BD=p.BD, lead=p.lead, tail=p.tail;
   const targetRad=p.angleDeg*π/180;
   const curRad=targetRad*progress;
-  const curRadC=Math.min(curRad, 2*π*0.999); // clamp drawing at one full turn
+  const curRadC=Math.min(curRad, 2*π*0.999);
   const curAngleDeg=p.angleDeg*progress;
 
-  // Work in real mm, compute scale from bounding box of all states
-  const RZONE=Math.max(R*0.13, 45); // half-width of roller zone (mm)
-
-  // Visual feed stub: don't reserve space for the whole unbent bar — it would
-  // squash the exit arc and make the bend look too steep. A modest stub keeps
-  // the exit curve large, so it reads as the gradual sweep the bar really makes.
+  const RZONE=Math.max(R*0.13, 45);
   const tailCap=Math.max(R*0.55, RZONE*3);
-
-  // The bend forms AT the bending roller (x = 0). The bar is straight up to
-  // there, then sweeps round on a constant radius — exactly how it feeds through
-  // and curls away. The leading tip travels along the circle as more bar feeds.
   const pts=[];
   const tailMax=Math.min(p.arcLen + tail, tailCap + tail); // feed tail at 0% (longest)
   pts.push([-tailMax, 0]);                              // straight feed extends left
@@ -809,96 +795,94 @@ function drawSim(progress, p) {
   const tipx=R*Math.sin(targetRad) + lead*Math.cos(targetRad);
   const tipy=+(R*(1-Math.cos(targetRad))) + lead*Math.sin(targetRad);
   pts.push([tipx, tipy]);
-  pts.push([-RZONE*1.6, -RZONE]);                       // headroom for feed rollers (upper-left)
+  pts.push([-RZONE*1.6, -RZONE]);  // headroom above bending point for machine rollers
 
   const xs=pts.map(q=>q[0]), ys=pts.map(q=>q[1]);
   const minX=Math.min(...xs), maxX=Math.max(...xs);
   const minY=Math.min(...ys), maxY=Math.max(...ys);
   const pad=Math.max(R*0.1, RZONE*0.6);
   const shapeW=maxX-minX+2*pad, shapeH=maxY-minY+2*pad;
-  // Fit content into the fixed 500×350 viewBox (with margin) and centre it.
-  // Scaling is baked into coordinates; centring uses a translate group so that
-  // stroke widths and font sizes stay constant regardless of zoom.
-  const sc=Math.min(460/shapeW, 320/shapeH);
 
-  const sR=R*sc, sLead=lead*sc, sZone=RZONE*sc;
-  const sBD=Math.max(3,Math.min(15,BD*sc*0.6));
-  const sRR=Math.max(6,Math.min(14,sZone*0.24)); // kept small so rollers don't overlap
+  // Auto-fit scale: fits the bar into the 500×350 viewBox at 100% zoom
+  const autoFitSc=Math.min(460/shapeW, 320/shapeH);
+  // User zoom from slider (100 = auto-fit, lower = zoom out to see large bars)
+  const zoomEl=document.getElementById('sim-zoom');
+  const userZoom=(zoomEl ? parseInt(zoomEl.value)||100 : 100)/100;
+  const barSc=autoFitSc*userZoom;
 
-  const cxMid=((minX+maxX)/2)*sc, cyMid=((minY+maxY)/2)*sc;
+  // Bar-scaled dimensions
+  const sR=R*barSc, sZone=RZONE*barSc;
+  const sBD=Math.max(3,Math.min(12,BD*barSc*0.6));
+
+  // Centre of bar bounding box in SVG coordinates (bending point = 0,0 in bar space)
+  const cxMid=((minX+maxX)/2)*barSc, cyMid=((minY+maxY)/2)*barSc;
+  // Where the bending point (0,0) falls in SVG space after centering
+  const bendSvgX=-cxMid, bendSvgY=-cyMid;
+
+  // ── Machine rollers — drawn in FIXED SVG pixels (independent of zoom) ──
+  // This keeps the machine visually consistent regardless of how large the bar is.
+  const MACH_RR=10;    // roller radius: always 10 px
+  const DRIVE_X=32;    // drive wheels: 32 px left/right of bending pin
+  const barHalf=Math.max(sBD,5)/2;
+  const machBackY=-(MACH_RR+barHalf+2);  // feed rollers above bar
+  const machBendY=+(MACH_RR+barHalf+2);  // bending roller below bar
+
+  function drawRoller(cx,cy,r,stroke){
+    svg.appendChild(el('circle',{cx,cy,r,fill:'#36384a',stroke,'stroke-width':1.5}));
+    svg.appendChild(el('circle',{cx,cy,r:r*0.38,fill:'#50526a',opacity:.6}));
+    svg.appendChild(el('circle',{cx,cy,r:1.5,fill:'#888'}));
+  }
+  drawRoller(bendSvgX-DRIVE_X, bendSvgY+machBackY, MACH_RR, '#6a8caf');  // left feed roller
+  drawRoller(bendSvgX+DRIVE_X, bendSvgY+machBackY, MACH_RR, '#6a8caf');  // right feed roller
+  drawRoller(bendSvgX,          bendSvgY+machBendY, MACH_RR, '#e94560'); // bending roller
+
+  // ── Bar path — drawn in a translated group, scaled by barSc ──
   const g=el('g',{transform:`translate(${-cxMid} ${-cyMid})`});
   svg.appendChild(g);
 
-  // ── Rollers ──
-  // Feed rollers straddle the entry point (left of bend); bending roller sits below at x=0
-  const backY=-(sRR+sBD/2+1);   // feed rollers above bar (negative y)
-  const bendY=+(sRR+sBD/2+1);   // bending roller below bar (positive y)
-  function drawRoller(cx,cy,r,stroke){
-    g.appendChild(el('circle',{cx,cy,r,fill:'#36384a',stroke,'stroke-width':1.5}));
-    g.appendChild(el('circle',{cx,cy,r:r*0.38,fill:'#50526a',opacity:.6}));
-    g.appendChild(el('circle',{cx,cy,r:1.5,fill:'#888'}));
-  }
-  const drvX=Math.max(sZone*0.6, sRR*1.8);          // drive wheels straddle the bend point
-  drawRoller(-drvX, backY, sRR, '#6a8caf');         // left drive wheel
-  drawRoller(+drvX, backY, sRR, '#6a8caf');         // right drive wheel
-  drawRoller(0, bendY, sRR, '#e94560');             // bending pin — centred between the drive wheels
-
-  // ── Bar path ──
-  // Arc begins at (0,0) and sweeps CW (sweep=1): exits RIGHT, curves gradually DOWN.
-  // Centre of curvature sits directly below at (0, +sR).
   const curAex=sR*Math.sin(curRadC);
   const curAey=+(sR*(1-Math.cos(curRadC)));
   const la=curRadC>π?1:0;
-  const leadEx=curAex + sLead*Math.cos(curRadC);
-  const leadEy=curAey + sLead*Math.sin(curRadC);
 
-  // Feed tail (left of bend origin): remaining unbent bar, capped for visual clarity
-  const tailMm=Math.min((1-progress)*p.arcLen + tail, tailCap + tail);
-  const tailEndX= -tailMm*sc;
+  const tailMm=Math.min((1-progress)*p.arcLen+tail, tailCap+tail);
+  const tailEndX=-tailMm*barSc;
 
-  // Build path: tail stub → through roller zone → exit arc (+ optional lead leg)
   let exitSeg;
   if(progress>0.005){
     exitSeg = curAngleDeg<0.3
       ? `M 0 0 L ${curAex} ${curAey}`
       : `M 0 0 A ${sR} ${sR} 0 ${la} 1 ${curAex} ${curAey}`;
-    if(sLead>0) exitSeg += ` L ${leadEx} ${leadEy}`;
   } else {
-    exitSeg = `M 0 0 L ${sLead} 0`; // straight, ready to bend
+    exitSeg = `M 0 0 L 0 0`;
   }
   const throughSeg=`M ${-sZone*0.8} 0 L 0 0`;
   const tailSeg=`M ${-sZone*0.8} 0 L ${tailEndX} 0`;
   const allPath=[tailSeg,throughSeg,exitSeg].join(' ');
 
-  // Draw: glow → body → highlight
   g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a903322','stroke-width':sBD+10,'stroke-linecap':'round','stroke-linejoin':'round'}));
   g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a9098','stroke-width':sBD,'stroke-linecap':'round','stroke-linejoin':'round'}));
   g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#c8d2e0','stroke-width':sBD*0.2,'stroke-linecap':'round','stroke-linejoin':'round',opacity:.6}));
 
-  // Feed direction arrow on the tail
-  const arrX=Math.min(tailEndX*0.5, -sZone - 10);
+  const arrX=Math.min(tailEndX*0.5, -sZone-10);
   txt(g, arrX, -sBD-5, 'feed →', '#56586a', 'middle', 8);
   g.appendChild(el('path',{d:`M ${-sZone*0.8-9} -3 L ${-sZone*0.8} 0 L ${-sZone*0.8-9} 3`,fill:'none',stroke:'#56586a','stroke-width':1}));
 
-  // Angle label — inside the bend (concave side = above/left of the CW arc)
   if(curAngleDeg>2){
     const ma=curRadC/2;
-    // Midpoint of arc; concave inward direction is (-sin(ma), cos(ma)) → upper-left
     const offset=sBD+16;
-    const lx=sR*Math.sin(ma) - offset*Math.sin(ma);
-    const ly=sR*(1-Math.cos(ma)) + offset*Math.cos(ma);
+    const lx=sR*Math.sin(ma)-offset*Math.sin(ma);
+    const ly=sR*(1-Math.cos(ma))+offset*Math.cos(ma);
     txt(g, lx, ly, `${f(curAngleDeg)}°`, '#f5a623', 'middle', 10);
   }
 
-  // End markers
   const dotR=Math.max(3,sBD*0.5);
-  const tipX=(progress>0.005) ? (sLead>0?leadEx:curAex) : sLead;
-  const tipY=(progress>0.005) ? (sLead>0?leadEy:curAey) : 0;
-  g.appendChild(el('circle',{cx:tipX,cy:tipY,r:dotR,fill:'#4caf50',opacity:.9}));   // leading tip
-  g.appendChild(el('circle',{cx:tailEndX,cy:0,r:dotR,fill:'#e94560',opacity:.9})); // trailing tail
+  const tipX=progress>0.005 ? curAex : 0;
+  const tipY=progress>0.005 ? curAey : 0;
+  g.appendChild(el('circle',{cx:tipX,cy:tipY,r:dotR,fill:'#4caf50',opacity:.9}));   // bar tip
+  g.appendChild(el('circle',{cx:tailEndX,cy:0,r:dotR,fill:'#e94560',opacity:.9})); // bar tail
 
-  // Scale ruler (fixed in the bottom-left corner, true to the current zoom)
-  drawScaleBar(svg, sc, -232, 158, 130);
+  // Scale bar reflects current zoom — operator can read true mm size
+  drawScaleBar(svg, barSc, -232, 158, 130);
 }
 
 function animateSim() {
