@@ -276,6 +276,13 @@ nav button:hover{color:var(--text)}
         <span class="range-label" id="sim-pct">0%</span>
       </div>
     </div>
+    <div style="margin-bottom:.75rem">
+      <span style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.4rem">Animation Speed</span>
+      <div class="range-row">
+        <input type="range" id="sim-speed" min="1" max="3" value="2" step="1" oninput="onSimSpeed()">
+        <span class="range-label" id="sim-speed-lbl" style="font-size:.85rem;min-width:52px">Normal</span>
+      </div>
+    </div>
     <div style="display:flex;gap:.5rem;flex-wrap:wrap">
       <button class="btn btn-green" onclick="animateSim()">▶ Animate</button>
       <button class="btn btn-dark" onclick="resetSim()">Reset</button>
@@ -944,6 +951,11 @@ function drawSim(progress, p) {
   }
 }
 
+function onSimSpeed() {
+  const v=parseInt(document.getElementById('sim-speed').value)||2;
+  document.getElementById('sim-speed-lbl').textContent=['Slow','Normal','Fast'][v-1];
+}
+
 function animateSim() {
   if(simAnim) cancelAnimationFrame(simAnim);
   const p=simParams();
@@ -951,7 +963,8 @@ function animateSim() {
   const slider=document.getElementById('sim-sl');
   slider.value=0;
   document.getElementById('sim-pct').textContent='0%';
-  const dur=2200;
+  const speedV=parseInt(document.getElementById('sim-speed').value)||2;
+  const dur=[5000,3000,1200][speedV-1];
   const t0=performance.now();
   function step(now) {
     const t=Math.min((now-t0)/dur,1);
