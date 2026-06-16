@@ -283,11 +283,6 @@ nav button:hover{color:var(--text)}
   </div>
   <div class="card">
     <div class="card-title">Live View (top-down)</div>
-    <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem">
-      <span style="font-size:.75rem;color:var(--muted);min-width:38px">Zoom</span>
-      <input type="range" id="sim-zoom" min="5" max="400" value="100" style="flex:1;accent-color:var(--accent);height:6px" oninput="onSimZoom()">
-      <span style="color:var(--gold);font-weight:700;min-width:44px;text-align:right;font-size:.95rem" id="sim-zoom-pct">100%</span>
-    </div>
     <div class="diagram" style="min-height:300px;background:#080a0f">
       <svg id="sim-svg" viewBox="-250 -175 500 350" style="width:100%;max-height:360px"></svg>
     </div>
@@ -794,12 +789,6 @@ function onSimSlider() {
   drawSim(pct/100, simParams());
 }
 
-function onSimZoom() {
-  const v=parseInt(document.getElementById('sim-zoom').value)||100;
-  document.getElementById('sim-zoom-pct').textContent=`${v}%`;
-  const pct=parseInt(document.getElementById('sim-sl').value)||0;
-  drawSim(pct/100, simParams());
-}
 
 function drawSim(progress, p) {
   const svg=document.getElementById('sim-svg');
@@ -841,12 +830,8 @@ function drawSim(progress, p) {
   const pad=Math.max(R*0.1, RZONE*0.6);
   const shapeW=maxX-minX+2*pad, shapeH=maxY-minY+2*pad;
 
-  // Auto-fit scale: fits the bar into the 500×350 viewBox at 100% zoom
-  const autoFitSc=Math.min(460/shapeW, 320/shapeH);
-  // User zoom from slider (100 = auto-fit, lower = zoom out to see large bars)
-  const zoomEl=document.getElementById('sim-zoom');
-  const userZoom=(zoomEl ? parseInt(zoomEl.value)||100 : 100)/100;
-  const barSc=autoFitSc*userZoom;
+  // Auto-fit: bar fills the 500×350 viewBox
+  const barSc=Math.min(460/shapeW, 320/shapeH);
 
   // Bar-scaled dimensions
   const sR=R*barSc, sZone=RZONE*barSc;
@@ -857,13 +842,11 @@ function drawSim(progress, p) {
   // Where the bending point (0,0) falls in SVG space after centering
   const bendSvgX=-cxMid, bendSvgY=-cyMid;
 
-  // ── Machine geometry — fixed SVG pixel sizes, never scale with zoom ──
-  const BEND_RR = 24;   // bending roller radius (px) — always this visual size
-  const FEED_RR = 19;   // feed roller radius (px)
-  const DRIVE_X = 58;   // feed wheels: ±58 px from bending pin centre
-  // Gap between bar centreline and roller surface — large enough that bar is
-  // clearly visible threading between the rollers even at thin visual bar widths.
-  const SLOT_HALF = Math.max(sBD * 0.6, 9);
+  // ── Machine geometry — real-world mm dimensions (~1.5m footprint), scaled with bar ──
+  const BEND_RR = 80  * barSc;   // bending roller radius  (80mm real)
+  const FEED_RR = 60  * barSc;   // feed roller radius     (60mm real)
+  const DRIVE_X = 580 * barSc;   // feed roller centres    (580mm from pin → ~1.4m span)
+  const SLOT_HALF = Math.max(BD * 0.55, 22) * barSc;  // min 22mm gap
   const machBackY = -(FEED_RR + SLOT_HALF);   // feed roller centres (above bar)
   const machBendY = +(BEND_RR + SLOT_HALF);   // bending roller centre (below bar)
 
