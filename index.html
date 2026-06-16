@@ -276,6 +276,13 @@ nav button:hover{color:var(--text)}
         <span class="range-label" id="sim-pct">0%</span>
       </div>
     </div>
+    <div style="margin-bottom:.75rem">
+      <span style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:.4rem">Animation Speed</span>
+      <div class="range-row">
+        <input type="range" id="sim-speed" min="1" max="3" value="2" step="1" oninput="onSimSpeed()">
+        <span class="range-label" id="sim-speed-lbl" style="font-size:.85rem;min-width:52px">Normal</span>
+      </div>
+    </div>
     <div style="display:flex;gap:.5rem;flex-wrap:wrap">
       <button class="btn btn-green" onclick="animateSim()">▶ Animate</button>
       <button class="btn btn-dark" onclick="resetSim()">Reset</button>
@@ -380,8 +387,6 @@ function legend(id, items) {
 }
 
 // ── Scale reference (map-style ruler) ──────────────────────────────
-// Diagrams auto-fit to the view, so a 200mm ring and a 2000mm ring look the
-// same size. A scale bar lets the operator judge the real size of the result.
 function niceScale(pxPerMm, targetPx){
   if(!(pxPerMm>0)) return {mm:0,px:0};
   const rawMm=targetPx/pxPerMm;
@@ -466,7 +471,6 @@ function circInput(id) {
 }
 
 function solveCircle() {
-  // Pull user-entered values (splice may legitimately be 0 or negative)
   const get=(id,allowZeroNeg)=>{
     if(!circUserSet.has(id)) return null;
     const v=parseFloat(document.getElementById(id).value);
@@ -499,7 +503,7 @@ function solveCircle() {
 }
 
 function setCircField(id, val) {
-  if(circUserSet.has(id)) return;        // don't overwrite what the user typed
+  if(circUserSet.has(id)) return;
   const e=document.getElementById(id);
   e.value=f(val);
   e.classList.add('solved');
@@ -537,11 +541,10 @@ function drawCircleSVG(r, info) {
   txt(svg,0,-dispR-8,'Ø','#4fa3e0','middle',11);
   txt(svg,dispR/2,-6,'r','#e94560','middle',11);
 
-  // Show the splice/overlap as a short doubled arc near the top of the ring
   const circ=info.circ, raw=info.raw, sp=info.sp;
   if(sp!=null && sp>0 && circ>0){
-    const sweep=Math.min(sp/circ*2*π, π*0.9);   // overlap arc (capped visually)
-    const a0=-π/2 - sweep/2, a1=-π/2 + sweep/2;  // centred at top
+    const sweep=Math.min(sp/circ*2*π, π*0.9);
+    const a0=-π/2 - sweep/2, a1=-π/2 + sweep/2;
     const x0=dispR*Math.cos(a0), y0=dispR*Math.sin(a0);
     const x1=dispR*Math.cos(a1), y1=dispR*Math.sin(a1);
     svg.appendChild(el('path',{d:`M ${x0} ${y0} A ${dispR} ${dispR} 0 0 1 ${x1} ${y1}`,
@@ -566,7 +569,6 @@ function drawCircleSVG(r, info) {
     items.push({color:'#f5a623', name:'Recommended overlap', value:`≈ ${f(recSplice)} mm (1.5× bar Ø)`});
     if(raw==null) items.push({color:'#f5a623', name:'Suggested Raw Bar Length', value:`${f(circ+recSplice)} mm`});
   }
-  // Scale ruler — the schematic circle is fixed-size, so show its true scale
   drawScaleBar(svg, dispR/r, -130, 100, 80);
   legend('circle-legend', items);
 }
@@ -574,7 +576,7 @@ function drawCircleSVG(r, info) {
 // ═══════════════════════════════════════
 //  ARC
 // ═══════════════════════════════════════
-const ARC_IDS = ['a-r','a-l','a-ch','a-ri']; // angle is display-only, not an input
+const ARC_IDS = ['a-r','a-l','a-ch','a-ri'];
 let arcUserSet = new Set();
 
 function arcInput(id) {
@@ -587,26 +589,23 @@ function arcInput(id) {
 function solveArc() {
   const get = id => {
     const e=document.getElementById(id);
-    if(!e) return null;                    // field may not exist (angle is display-only)
+    if(!e) return null;
     const v=parseFloat(e.value);
     return arcUserSet.has(id)&&v>0 ? v : null;
   };
   let r=get('a-r'), a=null, l=get('a-l'), ch=get('a-ch'), ri=get('a-ri');
 
-  // Derive r from pairs that don't need it
   if(ch!=null&&ri!=null&&r==null) r=(ch*ch/4+ri*ri)/(2*ri);
   if(a!=null&&l!=null&&r==null) r=l/(a*π/180);
   if(a!=null&&ch!=null&&r==null) r=ch/(2*Math.sin(a*π/360));
   if(a!=null&&ri!=null&&r==null) r=ri/(1-Math.cos(a*π/360));
 
-  // Derive a from r + one other
   if(r!=null&&a==null) {
     if(l!=null) a=l/r*180/π;
     else if(ch!=null) a=2*Math.asin(Math.min(1,ch/(2*r)))*180/π;
     else if(ri!=null) { const v=1-ri/r; a=2*Math.acos(Math.max(-1,Math.min(1,v)))*180/π; }
   }
 
-  // With r and a, solve everything
   if(r!=null&&a!=null&&r>0&&a>0&&a<=360) {
     const aRad=a*π/180;
     l = r*aRad;
@@ -626,7 +625,7 @@ function solveArc() {
 function setArcField(id, val) {
   if(arcUserSet.has(id)) return;
   const e=document.getElementById(id);
-  if(!e) return; // angle has no input field — display-only in legend/diagram
+  if(!e) return;
   e.value=f(val);
   e.classList.add('solved');
 }
@@ -658,46 +657,30 @@ function drawArcDiagram(r, angleDeg, arcLen, chord, rise) {
   const dR=r*sc;
   const aRad=angleDeg*π/180;
   const halfA=aRad/2;
-  // Arc is symmetric, centre at top-centre of diagram
   const cx=W/2, cy=dR+30;
 
-  // Arc endpoints
   const x1=cx-dR*Math.sin(halfA);
   const y1=cy-dR*Math.cos(halfA);
   const x2=cx+dR*Math.sin(halfA);
   const y2=cy-dR*Math.cos(halfA);
-  // Arc peak (midpoint of arc)
   const px=cx, py=cy-dR;
-  // Sagitta endpoint (midpoint of chord)
   const midX=(x1+x2)/2, midY=(y1+y2)/2;
 
   const la=angleDeg>180?1:0;
 
-  // Dashed radius lines
   svg.appendChild(el('line',{x1:cx,y1:cy,x2:x1,y2:y1,stroke:'#2a2d3e','stroke-width':1.5,'stroke-dasharray':'5 4'}));
   svg.appendChild(el('line',{x1:cx,y1:cy,x2:x2,y2:y2,stroke:'#2a2d3e','stroke-width':1.5,'stroke-dasharray':'5 4'}));
-
-  // Chord
   svg.appendChild(el('line',{x1,y1:y1,x2,y2:y2,stroke:'#e94560','stroke-width':1.5,'stroke-dasharray':'6 4'}));
-
-  // Rise line
   svg.appendChild(el('line',{x1:midX,y1:midY,x2:px,y2:py,stroke:'#4caf50','stroke-width':1.5,'stroke-dasharray':'4 3'}));
-
-  // Arc path (highlighted)
   svg.appendChild(el('path',{
     d:`M ${x1} ${y1} A ${dR} ${dR} 0 ${la} 1 ${x2} ${y2}`,
     fill:'none',stroke:'#f5a623','stroke-width':3,'stroke-linecap':'round'
   }));
-
-  // Centre dot
   svg.appendChild(el('circle',{cx,cy,r:3.5,fill:'#444'}));
-  // Endpoint dots
   svg.appendChild(el('circle',{cx:x1,cy:y1,r:4.5,fill:'#f5a623'}));
   svg.appendChild(el('circle',{cx:x2,cy:y2,r:4.5,fill:'#f5a623'}));
-  // Peak dot
   svg.appendChild(el('circle',{cx:px,cy:py,r:4,fill:'#f5a623',opacity:.7}));
 
-  // Angle arc indicator
   const aIndR=dR*0.2;
   const ai1x=cx-aIndR*Math.sin(halfA), ai1y=cy-aIndR*Math.cos(halfA);
   const ai2x=cx+aIndR*Math.sin(halfA), ai2y=cy-aIndR*Math.cos(halfA);
@@ -706,11 +689,8 @@ function drawArcDiagram(r, angleDeg, arcLen, chord, rise) {
     fill:'none',stroke:'#555','stroke-width':1
   }));
 
-  // Minimal in-diagram markers only — full values go in the legend below
   txt(svg,cx,py-8,'arc','#f5a623','middle',9);
   txt(svg,cx,cy+14,`${f(angleDeg)}°`,'#555','middle',8);
-
-  // Scale ruler (bottom-left) so the real size of the arc is readable
   drawScaleBar(svg, sc, 14, 250, 90);
 
   legend('arc-legend',[
@@ -739,7 +719,6 @@ function simParams() {
   return {BL,R,BD,lead,tail,arcLen,angleDeg};
 }
 
-// Bounding size (mm) of the finished bent bar — what it measures once formed.
 function simShapeSize(p){
   const ang=p.angleDeg*π/180, R=p.R, lead=p.lead, tail=p.tail;
   const xs=[-tail,0], ys=[0,0];
@@ -762,7 +741,6 @@ function calcSimInputs() {
     else
       extra=`<div class="stat-box"><div class="s-label">Short of full ring</div><div class="s-val">${f(-diff)} mm</div></div>`;
     extra=`<div class="stat-box"><div class="s-label">Full ring length</div><div class="s-val">${f(circ)} mm</div></div>`+extra;
-    // Finished size — diameter for a full ring, otherwise overall W×H footprint
     let sizeStat;
     if(p.angleDeg>=358){
       sizeStat=`<div class="stat-box" style="border-color:#4fa3e0"><div class="s-label" style="color:#4fa3e0">Outer diameter</div><div class="s-val">${f(2*p.R)} mm</div></div>`;
@@ -811,18 +789,18 @@ function drawSim(progress, p) {
   const RZONE=Math.max(R*0.13, 45);
   const tailCap=Math.max(R*0.55, RZONE*3);
   const pts=[];
-  const tailMax=Math.min(p.arcLen + tail, tailCap + tail); // feed tail at 0% (longest)
-  pts.push([-tailMax, 0]);                              // straight feed extends left
+  const tailMax=Math.min(p.arcLen + tail, tailCap + tail);
+  pts.push([-tailMax, 0]);
   pts.push([0,0]);
-  pts.push([lead, 0]);                                  // leading leg at 0%
-  for(let i=0;i<=48;i++){                               // exit arc curves DOWNWARD (positive y)
+  pts.push([lead, 0]);
+  for(let i=0;i<=48;i++){
     const a=(i/48)*Math.min(targetRad,2*π);
     pts.push([R*Math.sin(a), +(R*(1-Math.cos(a)))]);
   }
   const tipx=R*Math.sin(targetRad) + lead*Math.cos(targetRad);
   const tipy=+(R*(1-Math.cos(targetRad))) + lead*Math.sin(targetRad);
   pts.push([tipx, tipy]);
-  pts.push([-RZONE*1.6, -RZONE]);  // headroom above bending point for machine rollers
+  pts.push([-RZONE*1.6, -RZONE]);
 
   const xs=pts.map(q=>q[0]), ys=pts.map(q=>q[1]);
   const minX=Math.min(...xs), maxX=Math.max(...xs);
@@ -830,47 +808,36 @@ function drawSim(progress, p) {
   const pad=Math.max(R*0.1, RZONE*0.6);
   const shapeW=maxX-minX+2*pad, shapeH=maxY-minY+2*pad;
 
-  // Auto-fit: bar fills the 500×350 viewBox
   const barSc=Math.min(460/shapeW, 320/shapeH);
 
-  // Bar-scaled dimensions
   const sR=R*barSc, sZone=RZONE*barSc;
   const sBD=Math.max(4,Math.min(18,BD*barSc*0.85));
 
-  // Centre of bar bounding box in SVG coordinates (bending point = 0,0 in bar space)
   const cxMid=((minX+maxX)/2)*barSc, cyMid=((minY+maxY)/2)*barSc;
-  // Where the bending point (0,0) falls in SVG space after centering
   const bendSvgX=-cxMid, bendSvgY=-cyMid;
 
-  // ── Machine geometry — real mm, clamped so rollers stay visible at all bar scales ──
-  // Real CER40 footprint ~1.2–1.5m; rollers capped at a sensible min/max visual size.
   const BEND_RR = Math.max(7,  Math.min(80  * barSc, 20));
   const FEED_RR = Math.max(5,  Math.min(60  * barSc, 15));
   const DRIVE_X = Math.min(580 * barSc, 75);
   const SLOT_HALF = Math.max(Math.max(BD * 0.55, 22) * barSc, 5);
-  const machBackY = -(FEED_RR + SLOT_HALF);   // feed roller centres (above bar)
-  const machBendY = +(BEND_RR + SLOT_HALF);   // bending roller centre (below bar)
+  const machBackY = -(FEED_RR + SLOT_HALF);
+  const machBendY = +(BEND_RR + SLOT_HALF);
 
-  // ── 1. Machine housing plate — drawn first, sits behind bar and rollers ──
   {
     const px = bendSvgX - DRIVE_X - FEED_RR - 8;
     const pw = (DRIVE_X + FEED_RR + 8) * 2;
     const py = bendSvgY + machBackY - FEED_RR - 6;
     const ph = (machBendY - machBackY) + (BEND_RR + FEED_RR) + 12;
-    // Main body
     svg.appendChild(el('rect',{x:px,y:py,width:pw,height:ph,
       fill:'#13151f',stroke:'#20243a','stroke-width':2,rx:7}));
-    // Inner bevel highlight (top edge)
     svg.appendChild(el('line',{x1:px+3,y1:py+3,x2:px+pw-3,y2:py+3,
       stroke:'#2a2f4a','stroke-width':1,opacity:.7}));
-    // Bar channel slot — the dark slot shows where the bar threads through
     const slotY = bendSvgY - SLOT_HALF;
     const slotH = SLOT_HALF * 2;
     svg.appendChild(el('rect',{x:px,y:slotY,width:pw,height:slotH,
       fill:'#09090f',stroke:'none'}));
   }
 
-  // ── 2. Bar path — in translated group, between housing and rollers ──
   const g=el('g',{transform:`translate(${-cxMid} ${-cyMid})`});
   svg.appendChild(g);
 
@@ -893,17 +860,14 @@ function drawSim(progress, p) {
   const tailSeg=`M ${-sZone*0.8} 0 L ${tailEndX} 0`;
   const allPath=[tailSeg,throughSeg,exitSeg].join(' ');
 
-  // Glow → body → highlight
   g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a903318','stroke-width':sBD+14,'stroke-linecap':'round','stroke-linejoin':'round'}));
   g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8a9098','stroke-width':sBD,'stroke-linecap':'round','stroke-linejoin':'round'}));
   g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#c8d2e0','stroke-width':Math.max(1,sBD*0.18),'stroke-linecap':'round','stroke-linejoin':'round',opacity:.55}));
 
-  // Feed arrow
   const arrX=Math.min(tailEndX*0.5,-sZone-10);
   txt(g, arrX, -sBD-5, 'feed →', '#50536e', 'middle', 8);
   g.appendChild(el('path',{d:`M ${-sZone*0.8-9} -3 L ${-sZone*0.8} 0 L ${-sZone*0.8-9} 3`,fill:'none',stroke:'#50536e','stroke-width':1}));
 
-  // Bend angle label (inside the concave side of the arc)
   if(curAngleDeg>2){
     const ma=curRadC/2;
     const offset=sBD+20;
@@ -911,14 +875,12 @@ function drawSim(progress, p) {
         `${f(curAngleDeg)}°`, '#f5a623', 'middle', 11);
   }
 
-  // Bar end markers
   const dotR=Math.max(3.5,sBD*0.55);
   const tipX=progress>0.005 ? curAex : 0;
   const tipY=progress>0.005 ? curAey : 0;
   g.appendChild(el('circle',{cx:tipX,cy:tipY,r:dotR,fill:'#4caf50',opacity:.9}));
   g.appendChild(el('circle',{cx:tailEndX,cy:0,r:dotR,fill:'#e94560',opacity:.9}));
 
-  // ── 3. Rollers drawn AFTER bar group — appear on top (bar threads through them) ──
   function drawRoller(cx,cy,r,rimCol,hubCol){
     const sw=Math.max(1, r*0.14);
     svg.appendChild(el('circle',{cx,cy,r,fill:'#1e2133',stroke:rimCol,'stroke-width':sw}));
@@ -926,14 +888,11 @@ function drawSim(progress, p) {
     svg.appendChild(el('circle',{cx,cy,r:r*0.32,fill:hubCol,opacity:.7}));
     svg.appendChild(el('circle',{cx,cy,r:Math.max(1,r*0.16),fill:'#aaa'}));
   }
-  drawRoller(bendSvgX-DRIVE_X, bendSvgY+machBackY, FEED_RR, '#5a80a8','#3a5068'); // L feed
-  drawRoller(bendSvgX+DRIVE_X, bendSvgY+machBackY, FEED_RR, '#5a80a8','#3a5068'); // R feed
-  drawRoller(bendSvgX,          bendSvgY+machBendY, BEND_RR, '#c44060','#7a2038'); // bending
+  drawRoller(bendSvgX-DRIVE_X, bendSvgY+machBackY, FEED_RR, '#5a80a8','#3a5068');
+  drawRoller(bendSvgX+DRIVE_X, bendSvgY+machBackY, FEED_RR, '#5a80a8','#3a5068');
+  drawRoller(bendSvgX,          bendSvgY+machBendY, BEND_RR, '#c44060','#7a2038');
 
-  // ── 4. Ruler / diameter annotation at the bottom ──
   if(p.angleDeg >= 358) {
-    // Full circle: ruler would show ±R from bending origin, which reads as "radius".
-    // Instead draw a clear diameter dimension across the circle.
     const dL = bendSvgX - sR, dR2 = bendSvgX + sR, dimY = 160;
     svg.appendChild(el('line',{x1:dL, y1:dimY, x2:dR2, y2:dimY, stroke:'#50536e', 'stroke-width':1.5}));
     svg.appendChild(el('line',{x1:dL, y1:dimY-5, x2:dL, y2:dimY+5, stroke:'#50536e', 'stroke-width':1.5}));
@@ -944,6 +903,11 @@ function drawSim(progress, p) {
   }
 }
 
+function onSimSpeed() {
+  const v=parseInt(document.getElementById('sim-speed').value)||2;
+  document.getElementById('sim-speed-lbl').textContent=['Slow','Normal','Fast'][v-1];
+}
+
 function animateSim() {
   if(simAnim) cancelAnimationFrame(simAnim);
   const p=simParams();
@@ -951,7 +915,8 @@ function animateSim() {
   const slider=document.getElementById('sim-sl');
   slider.value=0;
   document.getElementById('sim-pct').textContent='0%';
-  const dur=2200;
+  const speedV=parseInt(document.getElementById('sim-speed').value)||2;
+  const dur=[5000,3000,1200][speedV-1];
   const t0=performance.now();
   function step(now) {
     const t=Math.min((now-t0)/dur,1);
