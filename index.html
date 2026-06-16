@@ -812,7 +812,7 @@ function drawSim(progress, p) {
   const R=p.R, BD=p.BD, lead=p.lead, tail=p.tail;
   const targetRad=p.angleDeg*π/180;
   const curRad=targetRad*progress;
-  const curRadC=Math.min(curRad, 2*π*0.999);
+  const curRadC=curRad;
   const curAngleDeg=p.angleDeg*progress;
 
   const RZONE=Math.max(R*0.13, 45);
@@ -881,18 +881,21 @@ function drawSim(progress, p) {
   const g=el('g',{transform:`translate(${-cxMid} ${-cyMid})`});
   svg.appendChild(g);
 
-  const curAex=sR*Math.sin(curRadC);
-  const curAey=+(sR*(1-Math.cos(curRadC)));
-  const la=curRadC>π?1:0;
-
   const tailMm=Math.min((1-progress)*p.arcLen+tail, tailCap+tail);
   const tailEndX=-tailMm*barSc;
 
-  let exitSeg;
+  // Polyline arc helper — works for any angle including >360°
+  function arcPoly(r0, r1) {
+    const steps=Math.max(24, Math.ceil(Math.abs(r1-r0)/(π/12)));
+    let d=`M ${sR*Math.sin(r0)} ${sR*(1-Math.cos(r0))}`;
+    for(let i=1;i<=steps;i++){const a=r0+(i/steps)*(r1-r0); d+=` L ${sR*Math.sin(a)} ${sR*(1-Math.cos(a))}`;;}
+    return d;
+  }
+
+  let exitSeg, spliceSeg=null;
   if(progress>0.005){
-    exitSeg = curAngleDeg<0.3
-      ? `M 0 0 L ${curAex} ${curAey}`
-      : `M 0 0 A ${sR} ${sR} 0 ${la} 1 ${curAex} ${curAey}`;
+    exitSeg = curAngleDeg<0.3 ? `M 0 0 L 0 0` : arcPoly(0, curRadC);
+    if(curRadC > 2*π+0.01) spliceSeg = arcPoly(2*π, curRadC);
   } else {
     exitSeg=`M 0 0 L 0 0`;
   }
@@ -905,14 +908,29 @@ function drawSim(progress, p) {
   g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#8ab0bc','stroke-width':sBD,'stroke-linecap':'round','stroke-linejoin':'round'}));
   g.appendChild(el('path',{d:allPath,fill:'none',stroke:'#c8e0ea','stroke-width':Math.max(1,sBD*0.18),'stroke-linecap':'round','stroke-linejoin':'round',opacity:.55}));
 
+  // Splice overlap — drawn over bar in green when bar wraps past 360°
+  if(spliceSeg){
+    g.appendChild(el('path',{d:spliceSeg,fill:'none',stroke:'#4caf5040','stroke-width':sBD+10,'stroke-linecap':'round'}));
+    g.appendChild(el('path',{d:spliceSeg,fill:'none',stroke:'#4caf50','stroke-width':Math.max(2,sBD*0.7),'stroke-linecap':'round','stroke-dasharray':`${sBD} ${sBD*0.5}`}));
+    const spliceMm=(curRadC-2*π)*p.R;
+    const sma=2*π+(curRadC-2*π)/2;
+    const sox=sR*Math.sin(sma), soy=sR*(1-Math.cos(sma));
+    const sdir=sBD+18;
+    txt(g, sox+Math.sin(sma)*sdir, soy-Math.cos(sma)*sdir, `splice ${f(spliceMm)}mm`, '#4caf50','middle',8);
+  }
+
   // Feed arrow
   const arrX=Math.min(tailEndX*0.5,-sZone-10);
   txt(g, arrX, -sBD-5, 'feed →', '#4d7a8a', 'middle', 8);
   g.appendChild(el('path',{d:`M ${-sZone*0.8-9} -3 L ${-sZone*0.8} 0 L ${-sZone*0.8-9} 3`,fill:'none',stroke:'#4d7a8a','stroke-width':1}));
 
   // Bend angle label (inside the concave side of the arc)
+  // Bar tip position in bar-space coordinates
+  const curAex=sR*Math.sin(curRadC);
+  const curAey=+(sR*(1-Math.cos(curRadC)));
+
   if(curAngleDeg>2){
-    const ma=curRadC/2;
+    const ma=Math.min(curRadC/2, π*0.7);  // stay in upper-right quadrant for multi-loop
     const offset=sBD+20;
     txt(g, sR*Math.sin(ma)-offset*Math.sin(ma), sR*(1-Math.cos(ma))+offset*Math.cos(ma),
         `${f(curAngleDeg)}°`, '#ffa040', 'middle', 11);
