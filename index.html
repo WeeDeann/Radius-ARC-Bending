@@ -930,8 +930,18 @@ function drawSim(progress, p) {
   drawRoller(bendSvgX+DRIVE_X, bendSvgY+machBackY, FEED_RR, '#5a80a8','#3a5068'); // R feed
   drawRoller(bendSvgX,          bendSvgY+machBendY, BEND_RR, '#c44060','#7a2038'); // bending
 
-  // ── 4. Ruler along the bottom ──
-  drawRuler(svg, barSc, bendSvgX, 160);
+  // ── 4. Ruler / diameter annotation at the bottom ──
+  if(p.angleDeg >= 358) {
+    // Full circle: ruler would show ±R from bending origin, which reads as "radius".
+    // Instead draw a clear diameter dimension across the circle.
+    const dL = bendSvgX - sR, dR2 = bendSvgX + sR, dimY = 160;
+    svg.appendChild(el('line',{x1:dL, y1:dimY, x2:dR2, y2:dimY, stroke:'#50536e', 'stroke-width':1.5}));
+    svg.appendChild(el('line',{x1:dL, y1:dimY-5, x2:dL, y2:dimY+5, stroke:'#50536e', 'stroke-width':1.5}));
+    svg.appendChild(el('line',{x1:dR2, y1:dimY-5, x2:dR2, y2:dimY+5, stroke:'#50536e', 'stroke-width':1.5}));
+    txt(svg, bendSvgX, dimY+13, `⌀ ${f(2*R)} mm`, '#50536e', 'middle', 9);
+  } else {
+    drawRuler(svg, barSc, bendSvgX, 160);
+  }
 }
 
 function animateSim() {
